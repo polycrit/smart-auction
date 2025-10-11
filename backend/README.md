@@ -198,37 +198,3 @@ Logs are structured and output to stdout:
 ```
 
 Configure log level with `DEBUG=true` in `.env`.
-
-## 🔐 Security Best Practices
-
-1. **Never commit `.env`** - Contains sensitive credentials
-2. **Use strong admin tokens** - Generate with `secrets.token_urlsafe(32)`
-3. **Configure CORS properly** - Don't use `["*"]` in production
-4. **Enable SSL** - Set `connect_args={"ssl": "require"}` in production DB
-5. **Rate limiting** - Implement rate limiting on bid endpoints (recommended)
-
-## 📚 Documentation
-
-- `REFACTORING_SUMMARY.md` - Detailed changes made during refactoring
-- `MIGRATION_GUIDE.md` - Guide for updating existing code
-- API docs available at `/docs` when running the server
-
-## 🤝 Contributing
-
-1. Follow existing code style and structure
-2. Add type hints to all functions
-3. Write tests for new features
-4. Update documentation as needed
-5. Use meaningful commit messages
-
-## 📝 License
-
-[Your License Here]
-
-## 👥 Authors
-
-[Your Team/Name Here]
-
----
-
-For questions or issues, please open a GitHub issue or contact the development team.
