@@ -2,14 +2,22 @@
 
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { adminPost } from '@/lib/api';
 import { useAuction } from '@/hooks/useAuction';
+import { useVendorsQuery } from '@/hooks/queries/useVendorsQuery';
+import { useParticipantsQuery } from '@/hooks/queries/useParticipantsQuery';
+import { useCreateParticipantMutation } from '@/hooks/mutations/useCreateParticipantMutation';
+import { useDeleteParticipantMutation } from '@/hooks/mutations/useDeleteParticipantMutation';
+import { adminPost } from '@/lib/api';
 import type { AuctionStatus, Lot } from '@/types/auction';
+import type { Vendor } from '@/types/vendor';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Copy, Check, Trash2, Plus } from 'lucide-react';
+import { toast } from 'sonner';
 // If you have shadcn Table, uncomment these and the table markup below
 // import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
@@ -40,11 +48,20 @@ export default function AdminAuctionPage() {
     const [err, setErr] = useState<string | undefined>(undefined);
 
     // create-lot form state
-    const [lotNumber, setLotNumber] = useState<string>('');
     const [lotName, setLotName] = useState<string>('');
     const [basePrice, setBasePrice] = useState<string>('0');
     const [minInc, setMinInc] = useState<string>('1');
     const [currency, setCurrency] = useState<string>('EUR');
+
+    // create-participant form state
+    const [selectedVendorId, setSelectedVendorId] = useState<string>('none');
+    const [copiedId, setCopiedId] = useState<string | null>(null);
+
+    // Use React Query for data fetching
+    const { data: participants = [] } = useParticipantsQuery(slug);
+    const { data: vendors = [] } = useVendorsQuery();
+    const createParticipantMutation = useCreateParticipantMutation(slug);
+    const deleteParticipantMutation = useDeleteParticipantMutation(slug);
 
     const changeStatus = async (next: AuctionStatus) => {
         setBusy(true);
@@ -64,26 +81,72 @@ export default function AdminAuctionPage() {
         setErr(undefined);
         try {
             const payload = {
-                lot_number: Number(lotNumber),
                 name: lotName.trim(),
                 base_price: basePrice,
                 min_increment: minInc,
                 currency,
             };
             await adminPost(`auctions/${slug}/lots`, payload);
-            // simplest: refresh the route to pick up the new lot (REST + socket snapshot on reconnect)
-            router.refresh();
-            // reset
-            setLotNumber('');
+            // reset form - the new lot will appear via WebSocket
             setLotName('');
             setBasePrice('0');
             setMinInc('1');
             setCurrency('EUR');
+            toast.success('Lot created');
         } catch (e) {
             setErr(e instanceof Error ? e.message : 'Failed to create lot');
         } finally {
             setBusy(false);
         }
+    };
+
+    const onCreateParticipant = async (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+
+        // Check if "create new" was selected
+        if (selectedVendorId === 'create_new') {
+            router.push(`/admin/vendors/new?returnTo=/admin/${slug}`);
+            return;
+        }
+
+        // Check if no vendor selected
+        if (selectedVendorId === 'none') {
+            setErr('Please select a vendor');
+            return;
+        }
+
+        setErr(undefined);
+        createParticipantMutation.mutate(
+            { vendor_id: selectedVendorId },
+            {
+                onSuccess: () => {
+                    setSelectedVendorId('none');
+                },
+                onError: (error: Error) => {
+                    setErr(error.message || 'Failed to create participant');
+                },
+            }
+        );
+    };
+
+    const copyInviteLink = async (participant: { id: string; join_url: string }) => {
+        const fullUrl = `${window.location.origin}${participant.join_url}`;
+        try {
+            await navigator.clipboard.writeText(fullUrl);
+            setCopiedId(participant.id);
+            toast.success('Link copied to clipboard');
+            setTimeout(() => setCopiedId(null), 2000);
+        } catch {
+            toast.error('Failed to copy link');
+        }
+    };
+
+    const deleteParticipant = async (participantId: string) => {
+        if (!confirm('Are you sure you want to delete this participant? This action cannot be undone.')) {
+            return;
+        }
+
+        deleteParticipantMutation.mutate(participantId);
     };
 
     const canStart = status === 'draft' || status === 'paused';
@@ -163,19 +226,17 @@ export default function AdminAuctionPage() {
           */}
 
                     {/* GRID VERSION (no extra deps) */}
-                    <div className="grid grid-cols-12 gap-2 text-sm font-medium text-muted-foreground px-2">
+                    <div className="grid grid-cols-11 gap-2 text-sm font-medium text-muted-foreground px-2">
                         <div className="col-span-1">#</div>
-                        <div className="col-span-5">Name</div>
-                        <div className="col-span-2">Status</div>
+                        <div className="col-span-6">Name</div>
                         <div className="col-span-2 text-right">Current</div>
                         <div className="col-span-2">Leader</div>
                     </div>
                     <div className="mt-2 space-y-1">
                         {lots.map((l: Lot) => (
-                            <div key={l.id} className="grid grid-cols-12 gap-2 items-center rounded-md border p-2">
+                            <div key={l.id} className="grid grid-cols-11 gap-2 items-center rounded-md border p-2">
                                 <div className="col-span-1">{l.lot_number}</div>
-                                <div className="col-span-5">{l.name}</div>
-                                <div className="col-span-2 capitalize">{l.status}</div>
+                                <div className="col-span-6">{l.name}</div>
                                 <div className="col-span-2 text-right">
                                     {l.current_price} {l.currency}
                                 </div>
@@ -188,18 +249,7 @@ export default function AdminAuctionPage() {
 
                 {/* Create lot */}
                 <CardFooter className="border-t mt-4 pt-4">
-                    <form onSubmit={onCreateLot} className="w-full grid grid-cols-1 gap-3 sm:grid-cols-12">
-                        <div className="sm:col-span-2">
-                            <Label htmlFor="lot_number">Lot #</Label>
-                            <Input
-                                id="lot_number"
-                                inputMode="numeric"
-                                pattern="[0-9]*"
-                                value={lotNumber}
-                                onChange={(e) => setLotNumber(e.target.value)}
-                                required
-                            />
-                        </div>
+                    <form onSubmit={onCreateLot} className="w-full grid grid-cols-1 gap-3 sm:grid-cols-10">
                         <div className="sm:col-span-4">
                             <Label htmlFor="lot_name">Name</Label>
                             <Input
@@ -223,8 +273,91 @@ export default function AdminAuctionPage() {
                             <Input id="currency" value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase())} />
                         </div>
                         <div className="sm:col-span-1 flex items-end">
-                            <Button type="submit" className="w-full" disabled={busy || !lotNumber || !lotName}>
+                            <Button type="submit" className="w-full" disabled={busy || !lotName}>
                                 Add
+                            </Button>
+                        </div>
+                    </form>
+                </CardFooter>
+            </Card>
+
+            {/* Participants */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Participants</CardTitle>
+                    <CardDescription>Create participants and share invitation links</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {participants.length === 0 ? (
+                        <div className="text-sm text-muted-foreground px-2 py-3">No participants yet. Create the first one below.</div>
+                    ) : (
+                        <div className="space-y-2">
+                            {participants.map((p: { id: string; join_url: string; vendor: { name: string; email: string } }) => (
+                                <div key={p.id} className="flex items-center justify-between rounded-md border p-3">
+                                    <div className="flex-1">
+                                        <div className="font-medium">{p.vendor.name}</div>
+                                        <div className="text-xs text-muted-foreground mt-1">{p.vendor.email}</div>
+                                        <div className="text-xs text-muted-foreground font-mono truncate mt-1">
+                                            {window.location.origin}
+                                            {p.join_url}
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Button size="sm" variant="outline" onClick={() => copyInviteLink(p)}>
+                                            {copiedId === p.id ? (
+                                                <>
+                                                    <Check className="h-4 w-4 mr-1" />
+                                                    Copied
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Copy className="h-4 w-4 mr-1" />
+                                                    Copy Link
+                                                </>
+                                            )}
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
+                                            onClick={() => deleteParticipant(p.id)}
+                                            className="hover:bg-destructive/10 hover:text-destructive"
+                                        >
+                                            <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </CardContent>
+
+                {/* Create participant */}
+                <CardFooter className="border-t mt-4 pt-4">
+                    <form onSubmit={onCreateParticipant} className="w-full space-y-3">
+                        <div className="flex items-end gap-3">
+                            <div className="flex-1">
+                                <Label htmlFor="vendor_select">Select Vendor</Label>
+                                <Select value={selectedVendorId} onValueChange={setSelectedVendorId}>
+                                    <SelectTrigger id="vendor_select" className="min-w-50">
+                                        <SelectValue placeholder="Select vendor..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {vendors.map((vendor: Vendor) => (
+                                            <SelectItem key={vendor.id} value={vendor.id}>
+                                                {vendor.name}
+                                            </SelectItem>
+                                        ))}
+                                        <SelectItem value="create_new" className="text-primary">
+                                            <div className="flex items-center">
+                                                <Plus className="h-4 w-4 mr-2" />
+                                                Create New Vendor
+                                            </div>
+                                        </SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <Button type="submit" disabled={busy || selectedVendorId === 'none' || createParticipantMutation.isPending}>
+                                {createParticipantMutation.isPending ? 'Adding...' : 'Add Participant'}
                             </Button>
                         </div>
                     </form>

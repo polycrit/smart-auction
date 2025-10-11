@@ -3,7 +3,6 @@ annotated-types==0.7.0
 anyio==4.11.0
 arrow==1.3.0
 asyncpg==0.30.0
--e git+https://github.com/polycrit/smart-auction.git@b96b4e7fc4ba1f4e3d59802452d65e90240fcd9c#egg=auction_backend&subdirectory=backend
 bidict==0.23.1
 blinker==1.9.0
 click==8.3.0

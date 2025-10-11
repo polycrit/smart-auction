@@ -68,8 +68,8 @@ function LotCard({
     const current = Number(lot.current_price || '0');
     const suggested = useMemo(() => (current + (Number.isFinite(minInc) ? minInc : 0)).toFixed(2), [current, minInc]);
 
-    const live = auctionStatus === 'live' && lot.status === 'live';
-    const canBid = live && connected && amount.trim().length > 0;
+    const live = auctionStatus === 'live';
+    const canBid = connected && amount.trim().length > 0;
 
     const nudge = (delta: number) => {
         const next = Number(amount || suggested) + delta;
@@ -92,11 +92,8 @@ function LotCard({
                         <CardTitle className="text-base sm:text-lg">
                             #{lot.lot_number} — {lot.name}
                         </CardTitle>
-                        <CardDescription className="mt-1">
-                            Status: <span className="capitalize">{lot.status}</span>
-                        </CardDescription>
                     </div>
-                    <Badge variant={live ? 'default' : 'outline'}>{live ? 'Bidding Open' : 'Not Live'}</Badge>
+                    <Badge variant={live ? 'default' : 'outline'}>{live ? 'Bidding Open' : 'Auction Not Live'}</Badge>
                 </div>
             </CardHeader>
 
@@ -128,31 +125,42 @@ function LotCard({
 
             <CardFooter className="pt-0">
                 <form onSubmit={submit} className="w-full space-y-3">
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                        <div className="sm:col-span-2">
-                            <Label htmlFor={`amount-${lot.id}`}>Your bid</Label>
-                            <div className="mt-1 flex gap-2">
-                                <Input
-                                    id={`amount-${lot.id}`}
-                                    inputMode="decimal"
-                                    value={amount}
-                                    onChange={(e) => setAmount(e.target.value)}
-                                    placeholder={suggested}
-                                    disabled={!live || !connected}
-                                />
-                                <Button type="button" variant="secondary" onClick={() => setAmount(suggested)} disabled={!live || !connected}>
-                                    Set {formatMoney(suggested, lot.currency)}
-                                </Button>
-                            </div>
-                        </div>
-                        <div className="flex items-end gap-2">
-                            <Button type="button" variant="outline" onClick={() => nudge(minInc)} disabled={!live || !connected}>
-                                +{formatMoney(lot.min_increment, lot.currency)}
-                            </Button>
-                            <Button type="submit" disabled={!canBid}>
-                                Place bid
+                    <div>
+                        <Label htmlFor={`amount-${lot.id}`}>Your bid</Label>
+                        <div className="mt-1 flex gap-2">
+                            <Input
+                                id={`amount-${lot.id}`}
+                                inputMode="decimal"
+                                value={amount}
+                                onChange={(e) => setAmount(e.target.value)}
+                                placeholder={suggested}
+                                disabled={!connected}
+                                className="flex-1"
+                            />
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                onClick={() => setAmount(suggested)}
+                                disabled={!connected}
+                                className="whitespace-nowrap"
+                            >
+                                Set {formatMoney(suggested, lot.currency)}
                             </Button>
                         </div>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => nudge(minInc)}
+                            disabled={!connected}
+                            className="flex-1 whitespace-nowrap"
+                        >
+                            +{formatMoney(lot.min_increment, lot.currency)}
+                        </Button>
+                        <Button type="submit" disabled={!canBid} className="flex-1">
+                            Place bid
+                        </Button>
                     </div>
                 </form>
             </CardFooter>

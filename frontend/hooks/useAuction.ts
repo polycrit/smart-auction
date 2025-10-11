@@ -62,7 +62,6 @@ export function useAuction(slug: string, inviteToken?: string) {
                             base_price: s.lots[l.id]?.base_price ?? '0',
                             min_increment: s.lots[l.id]?.min_increment ?? '1',
                             currency: l.currency,
-                            status: l.status,
                             current_price: l.current_price,
                             current_leader: l.current_leader,
                             end_time: l.end_time,

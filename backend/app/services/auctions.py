@@ -1,34 +1,25 @@
 from __future__ import annotations
-import secrets, string
 from uuid import uuid4, UUID
 from datetime import datetime
 from typing import Optional
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Auction, Participant, Lot
-
-_ALPHABET = string.ascii_letters + string.digits
-
-
-def gen_slug(n: int = 9) -> str:
-    return "".join(secrets.choice(_ALPHABET) for _ in range(n))
-
-
-def gen_token(n: int = 22) -> str:
-    return "".join(secrets.choice(_ALPHABET) for _ in range(n))
+from sqlalchemy.orm import selectinload
+from app.utils import generate_slug, generate_token, to_iso_string
 
 
 async def create_auction(
-    db: AsyncSession, title: str, description: str | None, start_time, end_time
+    db: AsyncSession, title: str, description: Optional[str], start_time, end_time
 ) -> Auction:
-    # ensure unique slug
-    for _ in range(5):
-        slug = gen_slug()
+    # ensure unique slug with retry logic
+    for attempt in range(5):
+        slug = generate_slug()
         exists = await db.scalar(select(Auction.id).where(Auction.slug == slug))
         if not exists:
             break
     else:
-        raise RuntimeError("Could not generate unique slug")
+        raise RuntimeError("Could not generate unique slug after 5 attempts")
 
     auction = Auction(
         id=uuid4(),
@@ -45,20 +36,23 @@ async def create_auction(
     return auction
 
 
-async def get_auction_by_slug(db: AsyncSession, slug: str) -> Auction | None:
+async def get_auction_by_slug(db: AsyncSession, slug: str) -> Optional[Auction]:
     return await db.scalar(select(Auction).where(Auction.slug == slug))
 
 
-async def get_participant_by_token(db: AsyncSession, token: str) -> Participant | None:
+async def get_participant_by_token(db: AsyncSession, token: str) -> Optional[Participant]:
     return await db.scalar(select(Participant).where(Participant.invite_token == token))
 
 
 async def create_participant(
-    db: AsyncSession, auction_id: UUID, display_name: str
+    db: AsyncSession, auction_id: UUID, vendor_id: UUID
 ) -> Participant:
-    token = gen_token()
+    token = generate_token()
     p = Participant(
-        id=uuid4(), auction_id=auction_id, display_name=display_name, invite_token=token
+        id=uuid4(),
+        auction_id=auction_id,
+        invite_token=token,
+        vendor_id=vendor_id,
     )
     db.add(p)
     await db.commit()
@@ -69,12 +63,20 @@ async def create_participant(
 async def create_lot(
     db: AsyncSession,
     auction_id: UUID,
-    lot_number: int,
     name: str,
     base_price,
     min_increment,
     currency: str,
 ) -> Lot:
+    # Auto-calculate lot number: find max lot_number for this auction and add 1
+    max_lot_number = (
+        await db.execute(
+            select(func.max(Lot.lot_number)).where(Lot.auction_id == auction_id)
+        )
+    ).scalar_one()
+
+    lot_number = (max_lot_number or 0) + 1
+
     lot = Lot(
         id=uuid4(),
         auction_id=auction_id,
@@ -83,7 +85,6 @@ async def create_lot(
         base_price=base_price,
         min_increment=min_increment,
         currency=currency,
-        status="ready",
         current_price=base_price,
     )
     db.add(lot)
@@ -101,39 +102,32 @@ async def change_auction_status(
     return auction
 
 
-def _iso(dt: Optional[datetime]) -> Optional[str]:
-    return dt.isoformat() if dt else None
-
-
 async def auction_state_payload(db: AsyncSession, auction: Auction) -> dict:
-    # Load lots explicitly (avoid lazy-loading in async)
-    lots = (
-        (
-            await db.execute(
-                select(Lot).where(Lot.auction_id == auction.id).order_by(Lot.lot_number)
-            )
+    result = await db.execute(
+        select(Auction)
+        .where(Auction.id == auction.id)
+        .options(
+            selectinload(Auction.lots),
         )
-        .scalars()
-        .all()
     )
+    auction_with_data = result.scalar_one()
 
-    # Count participants (SQLAlchemy 2.x style)
     participants_count = (
         await db.execute(
             select(func.count(Participant.id)).where(
                 Participant.auction_id == auction.id,
-                Participant.blocked == False,  # noqa: E712
+                Participant.blocked == False,
             )
         )
     ).scalar_one()
 
     return {
         "auction": {
-            "slug": auction.slug,
-            "title": auction.title,
-            "status": auction.status,
-            "start_time": _iso(auction.start_time),
-            "end_time": _iso(auction.end_time),
+            "slug": auction_with_data.slug,
+            "title": auction_with_data.title,
+            "status": auction_with_data.status,
+            "start_time": to_iso_string(auction_with_data.start_time),
+            "end_time": to_iso_string(auction_with_data.end_time),
         },
         "lots": [
             {
@@ -141,12 +135,11 @@ async def auction_state_payload(db: AsyncSession, auction: Auction) -> dict:
                 "lot_number": l.lot_number,
                 "name": l.name,
                 "currency": l.currency,
-                "status": l.status,
-                "current_price": str(l.current_price),  # Decimal -> string
+                "current_price": str(l.current_price),
                 "current_leader": str(l.current_leader) if l.current_leader else None,
-                "end_time": _iso(l.end_time),  # datetime -> ISO
+                "end_time": to_iso_string(l.end_time),
             }
-            for l in lots
+            for l in auction_with_data.lots
         ],
         "participants": {"count": int(participants_count)},
     }

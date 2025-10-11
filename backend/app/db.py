@@ -1,21 +1,15 @@
-import os
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
-from dotenv import load_dotenv
+from app.config import settings
 
-load_dotenv()
-
-DATABASE_URL = os.getenv("DATABASE_URL")
-if not DATABASE_URL:
-    raise RuntimeError("DATABASE_URL is not set (see .env)")
-
-# The fix is adding the connect_args parameter here
+# Create async engine with SSL support for PostgreSQL
 engine = create_async_engine(
-    DATABASE_URL,
+    settings.database_url,
     pool_size=5,
     max_overflow=5,
     connect_args={
         "ssl": "require"  # Or "prefer", "allow", etc., depending on your needs.
     },
+    echo=settings.debug,
 )
 
 SessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)

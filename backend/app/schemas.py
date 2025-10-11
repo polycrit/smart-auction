@@ -3,7 +3,8 @@ from typing import Optional, List
 from uuid import UUID
 from decimal import Decimal
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+from app.enums import AuctionStatus, Currency
 
 
 # ---- Create payloads ----
@@ -15,19 +16,24 @@ class AuctionCreate(BaseModel):
 
 
 class LotCreate(BaseModel):
-    lot_number: int = 1
-    name: str
-    base_price: Decimal = Field(default=0)
-    min_increment: Decimal = Field(default=1)
-    currency: str = "EUR"
+    name: str = Field(min_length=1, max_length=255)
+    base_price: Decimal = Field(default=0, ge=0)
+    min_increment: Decimal = Field(default=1, gt=0)
+    currency: Currency = Currency.EUR
 
 
 class ParticipantCreate(BaseModel):
-    display_name: str
+    vendor_id: UUID
+
+
+class VendorCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+    email: str = Field(min_length=1, max_length=255)
+    comment: Optional[str] = None
 
 
 class AuctionStatusUpdate(BaseModel):
-    status: str  # draft|live|paused|ended
+    status: AuctionStatus
 
 
 class BidPlace(BaseModel):
@@ -36,9 +42,20 @@ class BidPlace(BaseModel):
 
 
 # ---- Reads ----
+class VendorRead(BaseModel):
+    id: UUID
+    name: str
+    email: str
+    comment: Optional[str]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 class ParticipantRead(BaseModel):
     id: UUID
-    display_name: str
+    vendor: VendorRead
 
     class Config:
         from_attributes = True
@@ -51,7 +68,6 @@ class LotRead(BaseModel):
     base_price: Decimal
     min_increment: Decimal
     currency: str
-    status: str
     current_price: Decimal
     current_leader: Optional[UUID] = None
     end_time: Optional[datetime] = None
@@ -65,7 +81,7 @@ class AuctionRead(BaseModel):
     slug: str
     title: str
     description: Optional[str]
-    status: str
+    status: AuctionStatus
     start_time: Optional[datetime]
     end_time: Optional[datetime]
     created_at: datetime

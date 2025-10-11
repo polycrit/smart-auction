@@ -54,34 +54,6 @@ const data = {
             icon: IconSearch,
         },
     ],
-    auctions: [
-        {
-            name: 'Data Library',
-            url: '/admin/auctions/data-library',
-        },
-        {
-            name: 'Reports',
-            url: '/admin/auctions/reports',
-        },
-        {
-            name: 'Word Assistant',
-            url: '/admin/auctions/word-assistant',
-        },
-    ],
-    vendors: [
-        {
-            name: 'Data Library',
-            url: '/admin/vendors/data-library',
-        },
-        {
-            name: 'Reports',
-            url: '/admin/vendors/reports',
-        },
-        {
-            name: 'Word Assistant',
-            url: '/admin/vendors/word-assistant',
-        },
-    ],
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -101,8 +73,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarHeader>
             <SidebarContent>
                 <NavMain items={data.navMain} />
-                <NavItems items={data.auctions} header={'Auctions'} />
-                <NavItems items={data.vendors} header={'Vendors'} />
                 <NavSecondary items={data.navSecondary} className="mt-auto" />
             </SidebarContent>
             <SidebarFooter>

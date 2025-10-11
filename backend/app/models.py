@@ -20,6 +20,22 @@ class Base(DeclarativeBase):
     pass
 
 
+class Vendor(Base):
+    __tablename__ = "vendors"
+
+    id: Mapped[UUID_T] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid4
+    )
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    email: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    comment: Mapped[Optional[str]] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    participants: Mapped[List["Participant"]] = relationship(back_populates="vendor")
+
+
 class Auction(Base):
     __tablename__ = "auctions"
 
@@ -58,7 +74,11 @@ class Participant(Base):
         ForeignKey("auctions.id", ondelete="CASCADE"),
         nullable=False,
     )
-    display_name: Mapped[str] = mapped_column(Text, nullable=False)
+    vendor_id: Mapped[UUID_T] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("vendors.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     invite_token: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
     blocked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
@@ -66,6 +86,7 @@ class Participant(Base):
     )
 
     auction: Mapped["Auction"] = relationship(back_populates="participants")
+    vendor: Mapped["Vendor"] = relationship(back_populates="participants")
 
 
 class Lot(Base):
@@ -88,9 +109,6 @@ class Lot(Base):
     )
     currency: Mapped[str] = mapped_column(String(8), default="EUR", nullable=False)
 
-    status: Mapped[str] = mapped_column(
-        Text, default="ready", nullable=False
-    )  # ready|live|sold|withdrawn
     current_price: Mapped[float] = mapped_column(
         Numeric(12, 2), default=0, nullable=False
     )

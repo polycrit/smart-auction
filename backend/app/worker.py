@@ -2,15 +2,15 @@ import asyncio
 import signal
 import sys
 import redis
-from rq import Worker, Queue, Connection
+from rq import Worker, Queue
 from rq.job import Job
 
 # --- Import your job definitions here ---
 from app import jobs
+from app.config import settings
 
 # --- Redis connection ---
-REDIS_URL = "redis://localhost:6379/0"  # or use os.getenv("REDIS_URL")
-conn = redis.from_url(REDIS_URL)
+conn = redis.from_url(settings.redis_url)
 
 
 # --- Custom Worker that supports asyncio jobs ---
@@ -39,11 +39,10 @@ class AsyncWorker(Worker):
 
 
 def main():
-    with Connection(conn):
-        queues = ["scheduler"]  # match your queue name in main.py
-        worker = AsyncWorker(queues)
-        print(f"🚀 Async RQ worker started on queues: {queues}")
-        worker.work(with_scheduler=True)
+    queues = [Queue("scheduler", connection=conn)]
+    worker = AsyncWorker(queues, connection=conn)
+    print(f"🚀 Async RQ worker started on queues: {[q.name for q in queues]}")
+    worker.work(with_scheduler=True)
 
 
 # Graceful shutdown on Ctrl+C

@@ -2,7 +2,6 @@
 export type UUID = string;
 
 // Status unions
-export type LotStatus = 'ready' | 'live' | 'sold' | 'withdrawn';
 export type AuctionStatus = 'draft' | 'live' | 'paused' | 'ended';
 
 // Core entities
@@ -13,7 +12,6 @@ export type Lot = {
     base_price: string;
     min_increment: string;
     currency: string;
-    status: LotStatus;
     current_price: string;
     current_leader: UUID | null;
     end_time: string | null;
@@ -49,7 +47,6 @@ export type StateSnapshot = {
         current_price: string;
         current_leader: UUID | null;
         end_time: string | null;
-        status: LotStatus;
     }>;
     participants: { count: number };
 };

@@ -1,28 +1,37 @@
 from __future__ import annotations
+import logging
 from uuid import UUID, uuid4
 from decimal import Decimal
 from datetime import datetime, timezone, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.models import Lot, Bid
+from app.exceptions import BidTooLowError, LotNotLiveError
 
-
-class BidTooLow(Exception): ...
-
-
-class LotNotLive(Exception): ...
+logger = logging.getLogger("auction.bids")
 
 
 async def place_bid(
     db: AsyncSession, lot_id: UUID, participant_id: UUID, amount: Decimal
 ) -> dict:
-    # 1) Lock the lot row
+    # 1) Lock the lot row and load auction
     lot = (
-        await db.execute(select(Lot).where(Lot.id == lot_id).with_for_update())
+        await db.execute(
+            select(Lot)
+            .where(Lot.id == lot_id)
+            .with_for_update()
+        )
     ).scalar_one()
 
-    if lot.status != "live":
-        raise LotNotLive("Lot not live")
+    # Load auction to check its status
+    from app.models import Auction
+    auction = (
+        await db.execute(select(Auction).where(Auction.id == lot.auction_id))
+    ).scalar_one()
+
+    if auction.status != "live":
+        logger.warning(f"Bid rejected: Auction is not live (status={auction.status})")
+        raise LotNotLiveError("Auction not live")
 
     current = Decimal(str(lot.current_price or 0))
     base = Decimal(str(lot.base_price or 0))
@@ -30,7 +39,10 @@ async def place_bid(
     min_required = max(base, current + step)
 
     if Decimal(str(amount)) < min_required:
-        raise BidTooLow(f"min_required={min_required}")
+        logger.warning(
+            f"Bid rejected: Amount {amount} is below minimum {min_required} for lot {lot_id}"
+        )
+        raise BidTooLowError(f"min_required={min_required}")
 
     # 2) Insert bid
     bid = Bid(
@@ -54,6 +66,10 @@ async def place_bid(
             lot.end_time = lot.end_time + timedelta(seconds=lot.extension_sec)
 
     await db.commit()
+
+    logger.info(
+        f"Bid accepted: Lot {lot_id}, Amount {amount}, Participant {participant_id}"
+    )
 
     return {
         "type": "bid_accepted",
