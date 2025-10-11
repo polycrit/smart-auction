@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import List, Optional
 from uuid import uuid4, UUID as UUID_T
-from datetime import datetime  # <-- add this import
+from datetime import datetime
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy import (
     String,
@@ -112,8 +112,9 @@ class Lot(Base):
     current_price: Mapped[float] = mapped_column(
         Numeric(12, 2), default=0, nullable=False
     )
+    # FIX: Add ondelete="SET NULL" to allow participant deletion
     current_leader: Mapped[Optional[UUID_T]] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("participants.id")
+        UUID(as_uuid=True), ForeignKey("participants.id", ondelete="SET NULL")
     )
     end_time: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     extension_sec: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

@@ -17,32 +17,37 @@ conn = redis.from_url(settings.redis_url)
 class AsyncWorker(Worker):
     """RQ Worker that supports asyncio jobs seamlessly."""
 
-    async def handle_job_async(self, job: Job, queue: Queue):
-        """Handle async jobs properly."""
+    def execute_job(self, job: Job, queue: Queue):
+        """Override default execute_job to support async functions."""
         try:
+            # Get the running event loop (created by asyncio.run in main())
+            loop = asyncio.get_event_loop()
+
+            # If the job function is async, await it
             if asyncio.iscoroutinefunction(job.func):
-                await job.func(*job.args, **job.kwargs)
+                loop.run_until_complete(job.func(*job.args, **job.kwargs))
             else:
+                # For sync functions, just call them normally
                 job.func(*job.args, **job.kwargs)
         except Exception as e:
             print(f"[WORKER ERROR] {e}")
             raise
 
-    def execute_job(self, job: Job, queue: Queue):
-        """Override default execute_job to support async."""
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            loop.run_until_complete(self.handle_job_async(job, queue))
-        finally:
-            loop.close()
-
 
 def main():
+    """Main worker entry point."""
     queues = [Queue("scheduler", connection=conn)]
     worker = AsyncWorker(queues, connection=conn)
     print(f"🚀 Async RQ worker started on queues: {[q.name for q in queues]}")
-    worker.work(with_scheduler=True)
+
+    # Create event loop for the worker
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    try:
+        worker.work(with_scheduler=True)
+    finally:
+        loop.close()
 
 
 # Graceful shutdown on Ctrl+C

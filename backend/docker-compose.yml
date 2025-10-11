@@ -1,24 +1,6 @@
-version: '3.8'
+version: "3.8"
 
 services:
-  # PostgreSQL Database
-  db:
-    image: postgres:15-alpine
-    container_name: auction-db
-    environment:
-      POSTGRES_USER: auction
-      POSTGRES_PASSWORD: auction_password
-      POSTGRES_DB: auction_db
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U auction"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   # Redis
   redis:
     image: redis:7-alpine
@@ -40,16 +22,11 @@ services:
     command: uvicorn app.main:sio_app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "8000:8000"
-    environment:
-      DATABASE_URL: postgresql+asyncpg://auction:auction_password@db:5432/auction_db
-      REDIS_URL: redis://redis:6379/0
-      ADMIN_TOKEN: ${ADMIN_TOKEN:-change-this-in-production}
-      DEBUG: ${DEBUG:-false}
+    env_file:
+      - .env
     volumes:
       - .:/app
     depends_on:
-      db:
-        condition: service_healthy
       redis:
         condition: service_healthy
     restart: unless-stopped
@@ -58,16 +35,12 @@ services:
   worker:
     build: .
     container_name: auction-worker
-    command: python app/worker.py
-    environment:
-      DATABASE_URL: postgresql+asyncpg://auction:auction_password@db:5432/auction_db
-      REDIS_URL: redis://redis:6379/0
-      ADMIN_TOKEN: ${ADMIN_TOKEN:-change-this-in-production}
+    command: python -m app.worker
+    env_file:
+      - .env
     volumes:
       - .:/app
     depends_on:
-      db:
-        condition: service_healthy
       redis:
         condition: service_healthy
     restart: unless-stopped
@@ -85,5 +58,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  postgres_data:
   redis_data:

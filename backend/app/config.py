@@ -2,6 +2,7 @@
 Centralized configuration management using pydantic-settings.
 All environment variables and application settings are defined here.
 """
+
 from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -13,7 +14,7 @@ class Settings(BaseSettings):
     database_url: str
 
     # Redis & Queue
-    redis_url: str = "redis://localhost:6379/0"
+    redis_url: str = "redis://redis:6379/0"
 
     # Security
     admin_token: str
