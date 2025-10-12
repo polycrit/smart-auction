@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { useCreateVendorMutation } from '@/hooks/mutations/useCreateVendorMutation';
 import { vendorSchema } from '@/lib/validations';
 
-export default function NewVendorPage() {
+function NewVendorForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const returnTo = searchParams.get('returnTo');
@@ -102,5 +102,13 @@ export default function NewVendorPage() {
                 </CardFooter>
             </form>
         </Card>
+    );
+}
+
+export default function NewVendorPage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <NewVendorForm />
+        </Suspense>
     );
 }
