@@ -3,7 +3,6 @@
 import * as React from 'react';
 import { IconChartBar, IconDashboard, IconHelp, IconInnerShadowTop, IconSearch, IconSettings, IconUsers, IconHammer } from '@tabler/icons-react';
 
-import { NavItems } from '@/components/nav-items';
 import { NavMain } from '@/components/nav-main';
 import { NavSecondary } from '@/components/nav-secondary';
 import { NavUser } from '@/components/nav-user';
