@@ -10,6 +10,7 @@ import { useVendorsQuery } from '@/hooks/queries/useVendorsQuery';
 import { useDeleteVendorMutation } from '@/hooks/mutations/useDeleteVendorMutation';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import { ErrorMessage } from '@/components/shared/ErrorMessage';
+import { PageHeader } from '@/components/ui/page-header';
 
 export default function VendorsPage() {
     const router = useRouter();
@@ -44,22 +45,16 @@ export default function VendorsPage() {
     if (isError) {
         return (
             <div className="max-w-6xl mx-auto p-6">
-                <ErrorMessage
-                    message={error instanceof Error ? error.message : 'Failed to load vendors'}
-                    onRetry={() => refetch()}
-                />
+                <ErrorMessage message={error instanceof Error ? error.message : 'Failed to load vendors'} onRetry={() => refetch()} />
             </div>
         );
     }
 
     return (
-        <div className="max-w-6xl mx-auto p-6 space-y-6">
+        <div className="max-w-6xl mx-auto space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-semibold">Vendors</h1>
-                    <p className="text-muted-foreground">Manage your vendor contacts</p>
-                </div>
+                <PageHeader text="Vendors" subtext="Manage you vendor contacts" />
                 <Link href="/admin/vendors/new">
                     <Button>
                         <Plus className="h-4 w-4 mr-2" />
@@ -113,14 +108,8 @@ export default function VendorsPage() {
                                 </div>
                             </CardHeader>
                             <CardContent className="space-y-3">
-                                {vendor.comment && (
-                                    <p className="text-sm text-muted-foreground">
-                                        {truncate(vendor.comment, 100)}
-                                    </p>
-                                )}
-                                <p className="text-xs text-muted-foreground">
-                                    Created: {formatDate(vendor.created_at)}
-                                </p>
+                                {vendor.comment && <p className="text-sm text-muted-foreground">{truncate(vendor.comment, 100)}</p>}
+                                <p className="text-xs text-muted-foreground">Created: {formatDate(vendor.created_at)}</p>
                             </CardContent>
                         </Card>
                     ))}

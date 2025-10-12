@@ -2,14 +2,14 @@ import { SectionCards } from '@/components/section-cards';
 import { ChartAreaInteractive } from '@/components/chart-area-interactive';
 import { DataTable } from '@/components/data-table';
 import data from '../data.json';
+import { PageHeader } from '@/components/ui/page-header';
 
 export default function Page() {
     return (
         <>
+            <PageHeader text="Dashboard" subtext="Relevant auction-related KPIs and charts" />
             <SectionCards />
-            <div className="px-4 lg:px-6">
-                <ChartAreaInteractive />
-            </div>
+            <ChartAreaInteractive />
             <DataTable data={data} />
         </>
     );
