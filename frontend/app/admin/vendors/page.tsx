@@ -44,14 +44,14 @@ export default function VendorsPage() {
 
     if (isError) {
         return (
-            <div className="max-w-6xl mx-auto p-6">
+            <div className="max-w-xl w-full mx-auto p-6">
                 <ErrorMessage message={error instanceof Error ? error.message : 'Failed to load vendors'} onRetry={() => refetch()} />
             </div>
         );
     }
 
     return (
-        <div className="max-w-6xl mx-auto space-y-6">
+        <div className="space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <PageHeader text="Vendors" subtext="Manage you vendor contacts" />
