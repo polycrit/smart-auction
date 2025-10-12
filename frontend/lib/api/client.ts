@@ -1,13 +1,8 @@
-import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
+import axios, { AxiosError, AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
 // Custom error type for better error handling
 export class ApiError extends Error {
-    constructor(
-        message: string,
-        public status?: number,
-        public code?: string,
-        public details?: unknown
-    ) {
+    constructor(message: string, public status?: number, public code?: string, public details?: unknown) {
         super(message);
         this.name = 'ApiError';
     }
@@ -66,24 +61,18 @@ const errorInterceptor = (error: AxiosError) => {
 };
 
 // Add error interceptor to both clients
-apiClient.interceptors.response.use(
-    (response) => response,
-    errorInterceptor
-);
+apiClient.interceptors.response.use((response) => response, errorInterceptor);
 
-adminClient.interceptors.response.use(
-    (response) => response,
-    errorInterceptor
-);
+adminClient.interceptors.response.use((response) => response, errorInterceptor);
 
 // Development logging
 if (process.env.NODE_ENV === 'development') {
-    const logRequest = (config: AxiosRequestConfig) => {
+    const logRequest = (config: InternalAxiosRequestConfig) => {
         console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`);
         return config;
     };
 
-    const logResponse = (response: { status: number; config: { url?: string } }) => {
+    const logResponse = (response: AxiosResponse) => {
         console.log(`[API] ${response.status} ${response.config.url}`);
         return response;
     };
