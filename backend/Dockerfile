@@ -26,12 +26,12 @@ COPY . .
 # Create logs directory
 RUN mkdir -p logs
 
-# Expose port
+# Expose port (Railway will override this with $PORT)
 EXPOSE 8000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/health')" || exit 1
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:${PORT:-8000}/health')" || exit 1
 
-# Run the application
-CMD ["uvicorn", "app.main:sio_app", "--host", "0.0.0.0", "--port", "8000"]
+# Default command - Railway can override this
+CMD sh -c "uvicorn app.main:sio_app --host 0.0.0.0 --port ${PORT:-8000}"
