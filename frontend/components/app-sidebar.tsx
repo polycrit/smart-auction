@@ -1,12 +1,13 @@
 'use client';
 
 import * as React from 'react';
-import { IconChartBar, IconDashboard, IconHelp, IconInnerShadowTop, IconSearch, IconSettings, IconUsers, IconHammer } from '@tabler/icons-react';
+import { IconChartBar, IconDashboard, IconHelp, IconSearch, IconSettings, IconUsers, IconHammer } from '@tabler/icons-react';
 
 import { NavMain } from '@/components/nav-main';
 import { NavSecondary } from '@/components/nav-secondary';
 import { NavUser } from '@/components/nav-user';
 import { Sidebar, SidebarContent, SidebarFooter, SidebarHeader, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
+import Image from 'next/image';
 
 const data = {
     user: {
@@ -63,8 +64,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     <SidebarMenuItem>
                         <SidebarMenuButton asChild className="data-[slot=sidebar-menu-button]:!p-1.5">
                             <a href="#">
-                                <IconInnerShadowTop className="!size-5" />
-                                <span className="text-base font-semibold">Acme Inc.</span>
+                                <Image width={16} height={16} src="/efeso-logo.png" alt="EFESO Logo" />
+                                <span className="text-base font-semibold">EFESO Auction Tool</span>
                             </a>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
