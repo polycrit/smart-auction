@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { api } from '@/lib/api';
+import { apiClient as api } from '@/lib/api/client';
 import type { AxiosResponse, Method } from 'axios';
 
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN!;

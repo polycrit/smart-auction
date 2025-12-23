@@ -3,6 +3,7 @@ Analytics service for generating auction platform statistics and insights.
 """
 from datetime import datetime, timedelta
 from typing import Dict, Any, List
+from uuid import UUID
 from sqlalchemy import func, select, case, and_, cast, Numeric
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Auction, Lot, Bid, Participant, Vendor
@@ -71,10 +72,13 @@ async def get_bid_analytics(db: AsyncSession) -> Dict[str, Any]:
     recent_bids_result = await db.execute(recent_bids_query)
     recent_bids = recent_bids_result.scalar() or 0
 
-    # Average bids per lot
-    avg_bids_query = select(
-        func.avg(func.count(Bid.id))
-    ).select_from(Bid).group_by(Bid.lot_id)
+    # Average bids per lot (requires subquery)
+    bids_per_lot_subq = (
+        select(func.count(Bid.id).label('bid_count'))
+        .group_by(Bid.lot_id)
+        .subquery()
+    )
+    avg_bids_query = select(func.avg(bids_per_lot_subq.c.bid_count))
     avg_bids_result = await db.execute(avg_bids_query)
     avg_bids_per_lot = float(avg_bids_result.scalar() or 0)
 
@@ -85,14 +89,15 @@ async def get_bid_analytics(db: AsyncSession) -> Dict[str, Any]:
 
     # Bid activity over time (last 7 days)
     seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    date_col = func.date_trunc('day', Bid.placed_at)
     daily_bids_query = select(
-        func.date_trunc('day', Bid.placed_at).label('date'),
+        date_col.label('date'),
         func.count(Bid.id).label('count')
     ).where(
         Bid.placed_at >= seven_days_ago
     ).group_by(
-        func.date_trunc('day', Bid.placed_at)
-    ).order_by('date')
+        date_col
+    ).order_by(date_col)
 
     daily_bids_result = await db.execute(daily_bids_query)
     daily_bids = [

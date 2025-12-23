@@ -1,4 +1,4 @@
-import { adminClient } from '../adminClient';
+import { adminClient } from './client';
 
 export interface AuctionAnalytics {
   total_auctions: number;

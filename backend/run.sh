@@ -1,54 +1,36 @@
 #!/bin/bash
 
-# Auction Backend - Main Startup Script
-# This script starts all necessary services for the auction backend
+# Auction Backend - Development Startup Script
+# Starts all services: Web Server, RQ Worker (with scheduler)
 
-set -e  # Exit on error
+set -e
 
-# Color codes for output
+# Color codes
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Function to print colored messages
-log_info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
-}
+log_info()    { echo -e "${BLUE}[INFO]${NC} $1"; }
+log_success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
+log_warning() { echo -e "${YELLOW}[WARNING]${NC} $1"; }
+log_error()   { echo -e "${RED}[ERROR]${NC} $1"; }
 
-log_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
+command_exists() { command -v "$1" >/dev/null 2>&1; }
+port_in_use()    { lsof -i :"$1" >/dev/null 2>&1; }
 
-log_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
+# Track PIDs for cleanup
+PIDS=()
 
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-# Function to check if a command exists
-command_exists() {
-    command -v "$1" >/dev/null 2>&1
-}
-
-# Function to check if a port is in use
-port_in_use() {
-    lsof -i :"$1" >/dev/null 2>&1
-}
-
-# Trap to cleanup on exit
 cleanup() {
+    echo ""
     log_warning "Shutting down services..."
-    if [ ! -z "$UVICORN_PID" ]; then
-        kill $UVICORN_PID 2>/dev/null || true
-    fi
-    if [ ! -z "$RQ_PID" ]; then
-        kill $RQ_PID 2>/dev/null || true
-    fi
+    for pid in "${PIDS[@]}"; do
+        kill $pid 2>/dev/null || true
+    done
     log_success "Cleanup complete"
+    exit 0
 }
 
 trap cleanup EXIT INT TERM
@@ -56,68 +38,115 @@ trap cleanup EXIT INT TERM
 # Change to script directory
 cd "$(dirname "$0")"
 
-log_info "Starting Auction Backend..."
+# Create logs directory first
+mkdir -p logs
+
+echo ""
+echo -e "${BLUE}======================================${NC}"
+echo -e "${BLUE}   Auction Backend - Development     ${NC}"
+echo -e "${BLUE}======================================${NC}"
 echo ""
 
-# Check prerequisites
+# ============================================
+# Prerequisites Check
+# ============================================
+
 log_info "Checking prerequisites..."
 
+# Python
 if ! command_exists python3; then
     log_error "Python 3 is not installed"
     exit 1
 fi
 
-if ! command_exists redis-cli; then
-    log_warning "Redis CLI not found. Make sure Redis server is running separately."
-fi
-
-# Check if .env file exists
+# .env file
 if [ ! -f .env ]; then
     log_error ".env file not found!"
-    log_info "Please create a .env file with the following variables:"
-    echo "  DATABASE_URL=postgresql+asyncpg://user:pass@localhost/dbname"
-    echo "  ADMIN_TOKEN=your-secret-token"
-    echo "  REDIS_URL=redis://localhost:6379/0"
+    echo ""
+    echo "  Create .env with:"
+    echo "    DATABASE_URL=postgresql+asyncpg://user:pass@host/db"
+    echo "    ADMIN_TOKEN=your-secret-token"
+    echo "    REDIS_URL=redis://localhost:6379/0"
     exit 1
 fi
 
-log_success "Prerequisites checked"
-echo ""
+log_success "Prerequisites OK"
 
-# Check if virtual environment exists
+# ============================================
+# Virtual Environment
+# ============================================
+
 if [ ! -d ".venv" ]; then
-    log_warning "Virtual environment not found. Creating one..."
+    log_warning "Virtual environment not found. Creating..."
     python3 -m venv .venv
     log_success "Virtual environment created"
 fi
 
-# Activate virtual environment
 log_info "Activating virtual environment..."
 source .venv/bin/activate
 
-# Install/update dependencies
-log_info "Installing/updating dependencies..."
+log_info "Installing dependencies..."
 pip install -q --upgrade pip
 pip install -q -r requirements.txt
 log_success "Dependencies ready"
-echo ""
 
-# Check Redis connection
+# ============================================
+# Service Checks
+# ============================================
+
+echo ""
+log_info "Checking services..."
+
+# Redis (required for job scheduling)
 log_info "Checking Redis connection..."
-if command_exists redis-cli; then
-    if redis-cli ping >/dev/null 2>&1; then
-        log_success "Redis is running"
+
+redis_running() {
+    if command_exists redis-cli; then
+        redis-cli ping >/dev/null 2>&1
     else
-        log_error "Cannot connect to Redis. Please start Redis server:"
-        echo "  brew services start redis  (macOS)"
-        echo "  sudo systemctl start redis  (Linux)"
+        python3 -c "
+import redis
+r = redis.from_url('redis://localhost:6379/0')
+r.ping()
+" >/dev/null 2>&1
+    fi
+}
+
+if redis_running; then
+    log_success "Redis is running"
+else
+    log_warning "Redis not running - starting via Docker..."
+
+    if ! command_exists docker; then
+        log_error "Docker is not installed. Please install Docker or start Redis manually."
         exit 1
     fi
-else
-    log_warning "Cannot verify Redis status"
+
+    # Check if Docker daemon is running
+    if ! docker info >/dev/null 2>&1; then
+        log_error "Docker daemon is not running. Please start Docker Desktop."
+        exit 1
+    fi
+
+    # Start Redis container (reuse existing or create new)
+    if docker ps -a --format '{{.Names}}' | grep -q '^redis$'; then
+        docker start redis >/dev/null 2>&1
+    else
+        docker run -d --name redis -p 6379:6379 redis:alpine >/dev/null 2>&1
+    fi
+
+    # Wait for Redis to be ready
+    sleep 2
+
+    if redis_running; then
+        log_success "Redis started via Docker"
+    else
+        log_error "Failed to start Redis"
+        exit 1
+    fi
 fi
 
-# Check if PostgreSQL is accessible
+# Database
 log_info "Checking database connection..."
 python3 -c "
 import asyncio
@@ -128,54 +157,48 @@ async def check_db():
     try:
         async with engine.connect() as conn:
             await conn.execute(text('SELECT 1'))
-        print('✓ Database connection successful')
+        print('  Database connection OK')
     except Exception as e:
-        print(f'✗ Database connection failed: {e}')
+        print(f'  Database connection FAILED: {e}')
         exit(1)
 
 asyncio.run(check_db())
 " || exit 1
 
-echo ""
-
-# Check if ports are available
-WEB_PORT=8000
+# Port
+WEB_PORT=${PORT:-8000}
 if port_in_use $WEB_PORT; then
-    log_error "Port $WEB_PORT is already in use!"
-    log_info "To free the port, run: lsof -ti:$WEB_PORT | xargs kill -9"
+    log_error "Port $WEB_PORT already in use!"
+    echo "  Free it: lsof -ti:$WEB_PORT | xargs kill -9"
     exit 1
 fi
 
 log_success "All checks passed"
+
+# ============================================
+# Start Services
+# ============================================
+
+echo ""
+echo -e "${BLUE}Starting services...${NC}"
 echo ""
 
-# Start RQ worker in background
-log_info "Starting RQ worker for background jobs..."
+# 1. RQ Worker (includes scheduler via with_scheduler=True)
+log_info "Starting RQ Worker (with scheduler)..."
 python3 app/worker.py > logs/rq-worker.log 2>&1 &
 RQ_PID=$!
+PIDS+=($RQ_PID)
 sleep 2
 
-if ps -p $RQ_PID > /dev/null; then
-    log_success "RQ worker started (PID: $RQ_PID)"
+if ps -p $RQ_PID > /dev/null 2>&1; then
+    log_success "RQ Worker started (PID: $RQ_PID)"
 else
-    log_error "Failed to start RQ worker"
+    log_error "Failed to start RQ Worker - check logs/rq-worker.log"
     exit 1
 fi
 
-echo ""
-
-# Start the FastAPI application
-log_info "Starting FastAPI server on http://localhost:$WEB_PORT"
-log_info "API Documentation: http://localhost:$WEB_PORT/docs"
-log_info "Health Check: http://localhost:$WEB_PORT/health"
-echo ""
-log_warning "Press Ctrl+C to stop all services"
-echo ""
-
-# Create logs directory if it doesn't exist
-mkdir -p logs
-
-# Start uvicorn
+# 2. FastAPI + Socket.IO Server
+log_info "Starting FastAPI server..."
 uvicorn app.main:sio_app \
     --host 0.0.0.0 \
     --port $WEB_PORT \
@@ -184,27 +207,40 @@ uvicorn app.main:sio_app \
     2>&1 | tee logs/uvicorn.log &
 
 UVICORN_PID=$!
-
-# Wait for uvicorn to start
+PIDS+=($UVICORN_PID)
 sleep 3
 
-if ps -p $UVICORN_PID > /dev/null; then
+if ps -p $UVICORN_PID > /dev/null 2>&1; then
     log_success "FastAPI server started (PID: $UVICORN_PID)"
-    echo ""
-    log_success "=== Auction Backend is Running ==="
-    echo ""
-    echo "  🌐 API:    http://localhost:$WEB_PORT"
-    echo "  📚 Docs:   http://localhost:$WEB_PORT/docs"
-    echo "  ❤️  Health: http://localhost:$WEB_PORT/health"
-    echo ""
-    echo "  📋 Logs:"
-    echo "    - Web:    logs/uvicorn.log"
-    echo "    - Worker: logs/rq-worker.log"
-    echo ""
 else
     log_error "Failed to start FastAPI server"
     exit 1
 fi
 
-# Wait for processes
+# ============================================
+# Running Summary
+# ============================================
+
+echo ""
+echo -e "${GREEN}======================================${NC}"
+echo -e "${GREEN}   Auction Backend is Running!       ${NC}"
+echo -e "${GREEN}======================================${NC}"
+echo ""
+echo "  Services:"
+echo "    - FastAPI + Socket.IO  (PID: $UVICORN_PID)"
+echo "    - RQ Worker + Scheduler (PID: $RQ_PID)"
+echo ""
+echo "  Endpoints:"
+echo "    API:    http://localhost:$WEB_PORT"
+echo "    Docs:   http://localhost:$WEB_PORT/docs"
+echo "    Health: http://localhost:$WEB_PORT/health"
+echo ""
+echo "  Logs:"
+echo "    logs/uvicorn.log"
+echo "    logs/rq-worker.log"
+echo ""
+echo -e "${YELLOW}Press Ctrl+C to stop all services${NC}"
+echo ""
+
+# Wait for main process
 wait $UVICORN_PID

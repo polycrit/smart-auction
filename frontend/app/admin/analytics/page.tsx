@@ -4,9 +4,7 @@ import { IconTrendingUp, IconUsers, IconGavel, IconCoin, IconChartBar } from '@t
 import { Badge } from '@/components/ui/badge';
 import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
-import { us
-
-eDashboardAnalytics } from '@/hooks/queries/useAnalytics';
+import { useDashboardAnalytics } from '@/hooks/queries/useAnalytics';
 import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
@@ -179,7 +177,7 @@ export default function AnalyticsPage() {
                                     cx="50%"
                                     cy="50%"
                                     labelLine={false}
-                                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                                    label={({ name, percent }) => `${name}: ${((percent ?? 0) * 100).toFixed(0)}%`}
                                     outerRadius={100}
                                     fill="#8884d8"
                                     dataKey="value"
