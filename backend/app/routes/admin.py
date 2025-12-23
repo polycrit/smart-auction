@@ -28,6 +28,12 @@ from app.schemas import (
     AuctionStatusUpdate,
     VendorCreate,
     VendorRead,
+    DashboardSummary,
+    AuctionAnalytics,
+    BidAnalytics,
+    RevenueAnalytics,
+    VendorAnalytics,
+    ParticipantAnalytics,
 )
 from app.services.auctions import (
     create_auction,
@@ -43,6 +49,7 @@ from app.services.vendors import (
     update_vendor,
     delete_vendor,
 )
+from app.services import analytics
 from app.jobs import activate_auction
 
 logger = logging.getLogger("auction.routes.admin")
@@ -403,3 +410,63 @@ async def delete_existing_vendor(
 
     logger.info(f"Vendor deleted: id={vendor_id}")
     return {"success": True, "id": vendor_id}
+
+
+# ====================
+# Analytics Endpoints
+# ====================
+
+
+@router.get("/analytics/dashboard", response_model=DashboardSummary)
+async def get_dashboard_analytics(
+    db: AsyncSession = Depends(get_session),
+):
+    """Get comprehensive dashboard analytics with all key metrics."""
+    logger.info("Dashboard analytics requested")
+    return await analytics.get_dashboard_summary(db)
+
+
+@router.get("/analytics/auctions", response_model=AuctionAnalytics)
+async def get_auction_analytics(
+    db: AsyncSession = Depends(get_session),
+):
+    """Get auction statistics and metrics."""
+    logger.info("Auction analytics requested")
+    return await analytics.get_auction_analytics(db)
+
+
+@router.get("/analytics/bids", response_model=BidAnalytics)
+async def get_bid_analytics(
+    db: AsyncSession = Depends(get_session),
+):
+    """Get bidding statistics and activity metrics."""
+    logger.info("Bid analytics requested")
+    return await analytics.get_bid_analytics(db)
+
+
+@router.get("/analytics/revenue", response_model=RevenueAnalytics)
+async def get_revenue_analytics(
+    db: AsyncSession = Depends(get_session),
+):
+    """Get financial analytics and revenue statistics."""
+    logger.info("Revenue analytics requested")
+    return await analytics.get_revenue_analytics(db)
+
+
+@router.get("/analytics/vendors", response_model=VendorAnalytics)
+async def get_vendor_analytics(
+    db: AsyncSession = Depends(get_session),
+):
+    """Get vendor participation and performance statistics."""
+    logger.info("Vendor analytics requested")
+    return await analytics.get_vendor_analytics(db)
+
+
+@router.get("/analytics/auctions/{auction_id}/participants", response_model=ParticipantAnalytics)
+async def get_auction_participant_analytics(
+    auction_id: str,
+    db: AsyncSession = Depends(get_session),
+):
+    """Get participant analytics for a specific auction."""
+    logger.info(f"Participant analytics requested for auction: {auction_id}")
+    return await analytics.get_participant_analytics(auction_id, db)

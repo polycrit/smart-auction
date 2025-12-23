@@ -89,3 +89,67 @@ class AuctionRead(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ---- Analytics Schemas ----
+class AuctionAnalytics(BaseModel):
+    total_auctions: int
+    active_auctions: int
+    recent_auctions: int
+    scheduled_auctions: int
+    by_status: dict
+
+
+class BidActivityData(BaseModel):
+    date: Optional[str]
+    count: int
+
+
+class BidAnalytics(BaseModel):
+    total_bids: int
+    recent_bids_24h: int
+    avg_bids_per_lot: float
+    unique_bidders: int
+    daily_activity: List[BidActivityData]
+
+
+class RevenueAnalytics(BaseModel):
+    total_revenue: float
+    ended_revenue: float
+    avg_lot_price: float
+    total_lots: int
+    lots_with_bids: int
+    participation_rate: float
+    by_currency: dict
+
+
+class TopVendor(BaseModel):
+    id: str
+    name: str
+    email: str
+    participation_count: int
+
+
+class VendorAnalytics(BaseModel):
+    total_vendors: int
+    active_participants: int
+    blocked_participants: int
+    leading_vendors: int
+    top_vendors: List[TopVendor]
+
+
+class ParticipantAnalytics(BaseModel):
+    total_participants: int
+    active_participants: int
+    blocked_participants: int
+    participants_with_bids: int
+    current_leaders: int
+    engagement_rate: float
+
+
+class DashboardSummary(BaseModel):
+    auctions: AuctionAnalytics
+    bids: BidAnalytics
+    revenue: RevenueAnalytics
+    vendors: VendorAnalytics
+    generated_at: str

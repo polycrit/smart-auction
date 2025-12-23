@@ -19,3 +19,13 @@ export const lotsKeys = {
     all: ['lots'] as const,
     byAuction: (slug: string) => [...lotsKeys.all, 'auction', slug] as const,
 };
+
+export const analyticsKeys = {
+    all: ['analytics'] as const,
+    dashboard: () => [...analyticsKeys.all, 'dashboard'] as const,
+    auctions: () => [...analyticsKeys.all, 'auctions'] as const,
+    bids: () => [...analyticsKeys.all, 'bids'] as const,
+    revenue: () => [...analyticsKeys.all, 'revenue'] as const,
+    vendors: () => [...analyticsKeys.all, 'vendors'] as const,
+    participants: (auctionId: string) => [...analyticsKeys.all, 'participants', auctionId] as const,
+};
