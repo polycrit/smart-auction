@@ -54,9 +54,8 @@ function AuctionCard({ auction }: { auction: Auction }) {
             await adminDelete(`auctions/${auction.slug}`);
             toast.success('Auction deleted successfully');
             queryClient.invalidateQueries({ queryKey: auctionsKeys.all });
-        } catch (err) {
+        } catch {
             toast.error('Failed to delete auction');
-            console.error(err);
         }
     };
 

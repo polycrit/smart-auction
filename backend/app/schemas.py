@@ -3,7 +3,7 @@ from typing import Optional, List
 from uuid import UUID
 from decimal import Decimal
 from datetime import datetime
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 from app.enums import AuctionStatus, Currency
 
 
@@ -114,12 +114,14 @@ class BidAnalytics(BaseModel):
 
 
 class RevenueAnalytics(BaseModel):
-    total_revenue: float
-    ended_revenue: float
+    realized_revenue: float
+    current_lot_value: float
     avg_lot_price: float
     total_lots: int
+    ended_lots: int
     lots_with_bids: int
-    participation_rate: float
+    conversion_rate: float
+    avg_winning_premium: float
     by_currency: dict
 
 
@@ -127,13 +129,16 @@ class TopVendor(BaseModel):
     id: str
     name: str
     email: str
-    participation_count: int
+    auction_count: int
+    bid_count: int
 
 
 class VendorAnalytics(BaseModel):
     total_vendors: int
-    active_participants: int
-    blocked_participants: int
+    participating_vendors: int
+    bidding_vendors: int
+    total_participations: int
+    blocked_participations: int
     leading_vendors: int
     top_vendors: List[TopVendor]
 

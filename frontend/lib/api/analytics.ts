@@ -27,12 +27,14 @@ export interface BidAnalytics {
 }
 
 export interface RevenueAnalytics {
-  total_revenue: number;
-  ended_revenue: number;
+  realized_revenue: number;
+  current_lot_value: number;
   avg_lot_price: number;
   total_lots: number;
+  ended_lots: number;
   lots_with_bids: number;
-  participation_rate: number;
+  conversion_rate: number;
+  avg_winning_premium: number;
   by_currency: Record<string, number>;
 }
 
@@ -40,13 +42,16 @@ export interface TopVendor {
   id: string;
   name: string;
   email: string;
-  participation_count: number;
+  auction_count: number;
+  bid_count: number;
 }
 
 export interface VendorAnalytics {
   total_vendors: number;
-  active_participants: number;
-  blocked_participants: number;
+  participating_vendors: number;
+  bidding_vendors: number;
+  total_participations: number;
+  blocked_participations: number;
   leading_vendors: number;
   top_vendors: TopVendor[];
 }

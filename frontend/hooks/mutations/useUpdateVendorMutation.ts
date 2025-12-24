@@ -28,7 +28,7 @@ export function useUpdateVendorMutation(id: string) {
 
             return { previousVendor };
         },
-        onError: (error: any, _newVendor, context) => {
+        onError: (error: Error, _newVendor, context) => {
             // Rollback to the previous value on error
             if (context?.previousVendor) {
                 queryClient.setQueryData(vendorsKeys.detail(id), context.previousVendor);

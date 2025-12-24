@@ -27,7 +27,7 @@ export function useDeleteParticipantMutation(slug: string) {
 
             return { previousParticipants };
         },
-        onError: (error: any, _participantId, context) => {
+        onError: (error: Error, _participantId, context) => {
             if (context?.previousParticipants) {
                 queryClient.setQueryData(
                     participantsKeys.byAuction(slug),

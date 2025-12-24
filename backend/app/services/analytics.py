@@ -2,9 +2,8 @@
 Analytics service for generating auction platform statistics and insights.
 """
 from datetime import datetime, timedelta
-from typing import Dict, Any, List
-from uuid import UUID
-from sqlalchemy import func, select, case, and_, cast, Numeric
+from typing import Dict, Any
+from sqlalchemy import func, select, and_, cast, Numeric
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Auction, Lot, Bid, Participant, Vendor
 
@@ -120,17 +119,32 @@ async def get_bid_analytics(db: AsyncSession) -> Dict[str, Any]:
 async def get_revenue_analytics(db: AsyncSession) -> Dict[str, Any]:
     """Get financial analytics and revenue statistics."""
 
-    # Total revenue (sum of current prices across all lots)
-    total_revenue_query = select(
+    # Current lot value (sum of current prices across all lots - potential value)
+    current_value_query = select(
         func.sum(cast(Lot.current_price, Numeric)).label('total')
     )
-    total_revenue_result = await db.execute(total_revenue_query)
-    total_revenue = float(total_revenue_result.scalar() or 0)
+    current_value_result = await db.execute(current_value_query)
+    current_lot_value = float(current_value_result.scalar() or 0)
 
-    # Revenue by currency
+    # Realized revenue (only from ended auctions - actual revenue)
+    realized_revenue_query = select(
+        func.sum(cast(Lot.current_price, Numeric))
+    ).select_from(Lot).join(
+        Auction, Lot.auction_id == Auction.id
+    ).where(
+        Auction.status == 'ended'
+    )
+    realized_revenue_result = await db.execute(realized_revenue_query)
+    realized_revenue = float(realized_revenue_result.scalar() or 0)
+
+    # Revenue by currency (from ended auctions only)
     revenue_by_currency_query = select(
         Lot.currency,
         func.sum(cast(Lot.current_price, Numeric)).label('revenue')
+    ).select_from(Lot).join(
+        Auction, Lot.auction_id == Auction.id
+    ).where(
+        Auction.status == 'ended'
     ).group_by(Lot.currency)
 
     revenue_by_currency_result = await db.execute(revenue_by_currency_query)
@@ -139,47 +153,75 @@ async def get_revenue_analytics(db: AsyncSession) -> Dict[str, Any]:
         for row in revenue_by_currency_result
     }
 
-    # Average lot price
-    avg_price_query = select(
-        func.avg(cast(Lot.current_price, Numeric))
-    )
-    avg_price_result = await db.execute(avg_price_query)
-    avg_lot_price = float(avg_price_result.scalar() or 0)
-
-    # Total lots with bids
-    lots_with_bids_query = select(
-        func.count(func.distinct(Lot.id))
-    ).select_from(Lot).join(Bid, Lot.id == Bid.lot_id)
-
-    lots_with_bids_result = await db.execute(lots_with_bids_query)
-    lots_with_bids = lots_with_bids_result.scalar() or 0
-
     # Total lots
     total_lots_query = select(func.count(Lot.id))
     total_lots_result = await db.execute(total_lots_query)
     total_lots = total_lots_result.scalar() or 0
 
-    # Participation rate
-    participation_rate = (lots_with_bids / total_lots * 100) if total_lots > 0 else 0
+    # Total lots with bids
+    lots_with_bids_query = select(
+        func.count(func.distinct(Lot.id))
+    ).select_from(Lot).join(Bid, Lot.id == Bid.lot_id)
+    lots_with_bids_result = await db.execute(lots_with_bids_query)
+    lots_with_bids = lots_with_bids_result.scalar() or 0
 
-    # Revenue from ended auctions
-    ended_revenue_query = select(
-        func.sum(cast(Lot.current_price, Numeric))
+    # Ended lots total
+    ended_lots_query = select(func.count(Lot.id)).select_from(Lot).join(
+        Auction, Lot.auction_id == Auction.id
+    ).where(Auction.status == 'ended')
+    ended_lots_result = await db.execute(ended_lots_query)
+    ended_lots = ended_lots_result.scalar() or 0
+
+    # Ended lots with bids (for conversion rate)
+    ended_lots_with_bids_query = select(
+        func.count(func.distinct(Lot.id))
+    ).select_from(Lot).join(
+        Auction, Lot.auction_id == Auction.id
+    ).join(
+        Bid, Lot.id == Bid.lot_id
+    ).where(Auction.status == 'ended')
+    ended_lots_with_bids_result = await db.execute(ended_lots_with_bids_query)
+    ended_lots_with_bids = ended_lots_with_bids_result.scalar() or 0
+
+    # Conversion rate (% of ended lots that received bids)
+    conversion_rate = (ended_lots_with_bids / ended_lots * 100) if ended_lots > 0 else 0
+
+    # Average winning premium (how much above base price lots sold for, in %)
+    # Only for ended lots with bids
+    premium_query = select(
+        func.avg(
+            (cast(Lot.current_price, Numeric) - cast(Lot.base_price, Numeric))
+            / cast(Lot.base_price, Numeric) * 100
+        )
     ).select_from(Lot).join(
         Auction, Lot.auction_id == Auction.id
     ).where(
-        Auction.status == 'ended'
+        and_(
+            Auction.status == 'ended',
+            Lot.current_price > Lot.base_price
+        )
     )
-    ended_revenue_result = await db.execute(ended_revenue_query)
-    ended_revenue = float(ended_revenue_result.scalar() or 0)
+    premium_result = await db.execute(premium_query)
+    avg_winning_premium = float(premium_result.scalar() or 0)
+
+    # Average lot price (from ended auctions)
+    avg_price_query = select(
+        func.avg(cast(Lot.current_price, Numeric))
+    ).select_from(Lot).join(
+        Auction, Lot.auction_id == Auction.id
+    ).where(Auction.status == 'ended')
+    avg_price_result = await db.execute(avg_price_query)
+    avg_lot_price = float(avg_price_result.scalar() or 0)
 
     return {
-        'total_revenue': round(total_revenue, 2),
-        'ended_revenue': round(ended_revenue, 2),
+        'realized_revenue': round(realized_revenue, 2),
+        'current_lot_value': round(current_lot_value, 2),
         'avg_lot_price': round(avg_lot_price, 2),
         'total_lots': total_lots,
+        'ended_lots': ended_lots,
         'lots_with_bids': lots_with_bids,
-        'participation_rate': round(participation_rate, 2),
+        'conversion_rate': round(conversion_rate, 2),
+        'avg_winning_premium': round(avg_winning_premium, 2),
         'by_currency': revenue_by_currency
     }
 
@@ -187,51 +229,40 @@ async def get_revenue_analytics(db: AsyncSession) -> Dict[str, Any]:
 async def get_vendor_analytics(db: AsyncSession) -> Dict[str, Any]:
     """Get vendor participation and performance statistics."""
 
-    # Total vendors
+    # Total registered vendors
     total_vendors_query = select(func.count(Vendor.id))
     total_vendors_result = await db.execute(total_vendors_query)
     total_vendors = total_vendors_result.scalar() or 0
 
-    # Active participants
-    active_participants_query = select(
-        func.count(Participant.id)
-    ).where(Participant.blocked == False)
-    active_participants_result = await db.execute(active_participants_query)
-    active_participants = active_participants_result.scalar() or 0
+    # Vendors who have participated in at least one auction
+    participating_vendors_query = select(
+        func.count(func.distinct(Participant.vendor_id))
+    )
+    participating_vendors_result = await db.execute(participating_vendors_query)
+    participating_vendors = participating_vendors_result.scalar() or 0
 
-    # Blocked participants
-    blocked_participants_query = select(
+    # Vendors who have placed at least one bid
+    bidding_vendors_query = select(
+        func.count(func.distinct(Participant.vendor_id))
+    ).select_from(Participant).join(
+        Bid, Participant.id == Bid.participant_id
+    )
+    bidding_vendors_result = await db.execute(bidding_vendors_query)
+    bidding_vendors = bidding_vendors_result.scalar() or 0
+
+    # Total participations (a vendor can participate in multiple auctions)
+    total_participations_query = select(func.count(Participant.id))
+    total_participations_result = await db.execute(total_participations_query)
+    total_participations = total_participations_result.scalar() or 0
+
+    # Blocked participations
+    blocked_participations_query = select(
         func.count(Participant.id)
     ).where(Participant.blocked == True)
-    blocked_participants_result = await db.execute(blocked_participants_query)
-    blocked_participants = blocked_participants_result.scalar() or 0
+    blocked_participations_result = await db.execute(blocked_participations_query)
+    blocked_participations = blocked_participations_result.scalar() or 0
 
-    # Top participating vendors (by number of auctions)
-    top_vendors_query = select(
-        Vendor.id,
-        Vendor.name,
-        Vendor.email,
-        func.count(Participant.id).label('participation_count')
-    ).select_from(Vendor).join(
-        Participant, Vendor.id == Participant.vendor_id
-    ).group_by(
-        Vendor.id, Vendor.name, Vendor.email
-    ).order_by(
-        func.count(Participant.id).desc()
-    ).limit(10)
-
-    top_vendors_result = await db.execute(top_vendors_query)
-    top_vendors = [
-        {
-            'id': str(row.id),
-            'name': row.name,
-            'email': row.email,
-            'participation_count': row.participation_count
-        }
-        for row in top_vendors_result
-    ]
-
-    # Vendors with current leads
+    # Vendors currently leading lots
     leading_vendors_query = select(
         func.count(func.distinct(Participant.vendor_id))
     ).select_from(Participant).join(
@@ -240,10 +271,41 @@ async def get_vendor_analytics(db: AsyncSession) -> Dict[str, Any]:
     leading_vendors_result = await db.execute(leading_vendors_query)
     leading_vendors = leading_vendors_result.scalar() or 0
 
+    # Top participating vendors (by number of auctions + bid count)
+    top_vendors_query = select(
+        Vendor.id,
+        Vendor.name,
+        Vendor.email,
+        func.count(func.distinct(Participant.id)).label('auction_count'),
+        func.count(Bid.id).label('bid_count')
+    ).select_from(Vendor).join(
+        Participant, Vendor.id == Participant.vendor_id
+    ).outerjoin(
+        Bid, Participant.id == Bid.participant_id
+    ).group_by(
+        Vendor.id, Vendor.name, Vendor.email
+    ).order_by(
+        func.count(Bid.id).desc()
+    ).limit(10)
+
+    top_vendors_result = await db.execute(top_vendors_query)
+    top_vendors = [
+        {
+            'id': str(row.id),
+            'name': row.name,
+            'email': row.email,
+            'auction_count': row.auction_count,
+            'bid_count': row.bid_count
+        }
+        for row in top_vendors_result
+    ]
+
     return {
         'total_vendors': total_vendors,
-        'active_participants': active_participants,
-        'blocked_participants': blocked_participants,
+        'participating_vendors': participating_vendors,
+        'bidding_vendors': bidding_vendors,
+        'total_participations': total_participations,
+        'blocked_participations': blocked_participations,
         'leading_vendors': leading_vendors,
         'top_vendors': top_vendors
     }

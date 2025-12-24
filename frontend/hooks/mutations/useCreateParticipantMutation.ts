@@ -15,7 +15,7 @@ export function useCreateParticipantMutation(slug: string) {
             queryClient.invalidateQueries({ queryKey: participantsKeys.byAuction(slug) });
             toast.success('Participant created');
         },
-        onError: (error: any) => {
+        onError: (error: Error) => {
             toast.error(error.message || 'Failed to create participant');
         },
     });

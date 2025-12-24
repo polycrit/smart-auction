@@ -16,7 +16,7 @@ export function useCreateVendorMutation() {
             queryClient.invalidateQueries({ queryKey: vendorsKeys.list() });
             toast.success('Vendor created successfully');
         },
-        onError: (error: any) => {
+        onError: (error: Error) => {
             toast.error(error.message || 'Failed to create vendor');
         },
     });

@@ -28,7 +28,7 @@ export function useDeleteVendorMutation() {
 
             return { previousVendors };
         },
-        onError: (error: any, _id, context) => {
+        onError: (error: Error, _id, context) => {
             // Rollback on error
             if (context?.previousVendors) {
                 queryClient.setQueryData(vendorsKeys.list(), context.previousVendors);

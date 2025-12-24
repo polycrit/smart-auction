@@ -7,9 +7,6 @@ import { IconCirclePlusFilled, IconMail, type Icon } from '@tabler/icons-react';
 import { Button } from '@/components/ui/button';
 import { SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
 
-// If you have a `cn` helper, you can import it and use it below.
-// import { cn } from "@/lib/utils";
-
 type Item = {
     title: string;
     url: string;
@@ -51,7 +48,6 @@ export function NavMain({ items }: { items: Item[] }) {
                                 <SidebarMenuButton
                                     asChild
                                     tooltip={item.title}
-                                    // If you have `cn`, replace with: cn("justify-start", active && "bg-accent text-accent-foreground")
                                     className={`justify-start ${active ? 'bg-accent text-accent-foreground' : ''}`}
                                     data-active={active ? '' : undefined}
                                 >
