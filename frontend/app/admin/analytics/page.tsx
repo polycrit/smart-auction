@@ -38,18 +38,18 @@ export default function AnalyticsPage() {
         { name: 'Ended', value: analytics.auctions.by_status.ended },
     ].filter(item => item.value > 0);
 
-    const bidActivityData = analytics.bids.daily_activity.map(item => ({
+    const bidActivityData = (analytics.bids?.daily_activity ?? []).map(item => ({
         date: item.date ? new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A',
         bids: item.count,
     }));
 
-    const currencyData = Object.entries(analytics.revenue.by_currency).map(([currency, amount]) => ({
+    const currencyData = Object.entries(analytics.revenue?.by_currency ?? {}).map(([currency, amount]) => ({
         currency,
         amount,
     }));
 
     // Get primary currency for formatting (use first currency or default to EUR)
-    const primaryCurrency = Object.keys(analytics.revenue.by_currency)[0] || 'EUR';
+    const primaryCurrency = Object.keys(analytics.revenue?.by_currency ?? {})[0] || 'EUR';
 
     const formatCurrency = (value: number, currency: string = primaryCurrency) => {
         return new Intl.NumberFormat('en-US', {
@@ -344,7 +344,7 @@ export default function AnalyticsPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-4">
-                            {analytics.vendors.top_vendors.slice(0, 8).map((vendor, index) => (
+                            {(analytics.vendors?.top_vendors ?? []).slice(0, 8).map((vendor, index) => (
                                 <div key={vendor.id} className="flex items-center justify-between">
                                     <div className="flex items-center gap-3">
                                         <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-sm font-medium">
@@ -361,7 +361,7 @@ export default function AnalyticsPage() {
                                     </div>
                                 </div>
                             ))}
-                            {analytics.vendors.top_vendors.length === 0 && (
+                            {(analytics.vendors?.top_vendors ?? []).length === 0 && (
                                 <div className="text-center text-muted-foreground py-8">
                                     No vendor participation data available
                                 </div>

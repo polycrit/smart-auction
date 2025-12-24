@@ -15,6 +15,7 @@ export const apiClient: AxiosInstance = axios.create({
     timeout: 20000,
     headers: {
         'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true',
     },
 });
 
@@ -24,6 +25,7 @@ export const adminClient: AxiosInstance = axios.create({
     timeout: 20000,
     headers: {
         'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true',
     },
 });
 

@@ -36,7 +36,7 @@ export default function Page() {
     if (!analytics) return null;
 
     // Get primary currency for formatting
-    const primaryCurrency = Object.keys(analytics.revenue.by_currency)[0] || 'EUR';
+    const primaryCurrency = Object.keys(analytics.revenue?.by_currency ?? {})[0] || 'EUR';
 
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat('en-US', {
@@ -47,7 +47,7 @@ export default function Page() {
         }).format(value);
     };
 
-    const bidActivityData = analytics.bids.daily_activity.map(item => ({
+    const bidActivityData = (analytics.bids?.daily_activity ?? []).map(item => ({
         date: item.date ? new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A',
         bids: item.count,
     }));

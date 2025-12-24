@@ -18,8 +18,6 @@ import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Copy, Check, Trash2, Plus } from 'lucide-react';
 import { toast } from 'sonner';
-// If you have shadcn Table, uncomment these and the table markup below
-// import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const STATUS_META: Record<AuctionStatus, { label: string; dot: string }> = {
     draft: { label: 'Draft', dot: 'bg-slate-400' },

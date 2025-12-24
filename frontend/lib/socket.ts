@@ -10,6 +10,9 @@ export function connectAuctionSocket(slug: string, inviteToken?: string) {
         reconnectionAttempts: Infinity,
         reconnectionDelay: 500,
         auth: { slug, t: inviteToken }, // passed to server's `auth`
+        extraHeaders: {
+            'ngrok-skip-browser-warning': 'true',
+        },
     });
     return socket;
 }
