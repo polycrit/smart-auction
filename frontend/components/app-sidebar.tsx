@@ -38,8 +38,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     <SidebarMenuItem>
                         <SidebarMenuButton asChild className="data-[slot=sidebar-menu-button]:!p-1.5">
                             <a href="/admin">
-                                <Image width={16} height={16} src="/efeso-logo.png" alt="EFESO Logo" />
-                                <span className="text-base font-semibold">EFESO Auction Tool</span>
+                                <Image width={16} height={16} className="invert" src="/vercel.svg" alt="Vercel Logo" />
+                                <span className="text-base font-semibold">Auction Tool Prototype</span>
                             </a>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
