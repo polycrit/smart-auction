@@ -20,6 +20,7 @@ class LotCreate(BaseModel):
     base_price: Decimal = Field(default=0, ge=0)
     min_increment: Decimal = Field(default=1, gt=0)
     currency: Currency = Currency.EUR
+    image_url: Optional[str] = None
 
 
 class ParticipantCreate(BaseModel):
@@ -71,6 +72,7 @@ class LotRead(BaseModel):
     current_price: Decimal
     current_leader: Optional[UUID] = None
     end_time: Optional[datetime] = None
+    image_url: Optional[str] = None
 
     class Config:
         from_attributes = True

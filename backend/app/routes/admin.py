@@ -10,7 +10,7 @@ import redis
 from rq import Queue
 from rq.job import Job
 from rq.exceptions import NoSuchJobError
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -138,6 +138,7 @@ async def create_auction_lot(
         payload.base_price,
         payload.min_increment,
         payload.currency.value,
+        payload.image_url,
     )
     logger.info(f"Lot created: auction={slug}, lot_number={lot.lot_number}")
 
@@ -149,6 +150,45 @@ async def create_auction_lot(
     await sio.emit("state", state, room=slug, namespace=AUCTION_NS)
 
     return lot
+
+
+@router.post("/upload/image")
+async def upload_image(
+    file: UploadFile = File(...),
+):
+    """Upload an image to S3 and return the URL."""
+    from app.services.s3 import upload_image as s3_upload
+
+    # Validate file type
+    allowed_types = ["image/jpeg", "image/png", "image/gif", "image/webp"]
+    if file.content_type not in allowed_types:
+        raise HTTPException(400, f"Invalid file type. Allowed: {', '.join(allowed_types)}")
+
+    # Validate file size (max 5MB)
+    content = await file.read()
+    if len(content) > 5 * 1024 * 1024:
+        raise HTTPException(400, "File too large. Maximum size is 5MB")
+
+    # Upload to S3
+    url = await s3_upload(content, file.content_type, file.filename or "image.jpg")
+    if not url:
+        raise HTTPException(500, "Failed to upload image. Check S3 configuration.")
+
+    logger.info(f"Image uploaded: {url}")
+    return {"url": url}
+
+
+@router.delete("/upload/image")
+async def delete_image(url: str = Query(...)):
+    """Delete an image from S3 by URL."""
+    from app.services.s3 import delete_image as s3_delete
+
+    success = await s3_delete(url)
+    if not success:
+        raise HTTPException(500, "Failed to delete image")
+
+    logger.info(f"Image deleted: {url}")
+    return {"success": True}
 
 
 @router.get("/auctions/{slug}/participants")

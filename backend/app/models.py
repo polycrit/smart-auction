@@ -108,6 +108,7 @@ class Lot(Base):
         Numeric(12, 2), default=1, nullable=False
     )
     currency: Mapped[str] = mapped_column(String(8), default="EUR", nullable=False)
+    image_url: Mapped[Optional[str]] = mapped_column(Text)
 
     current_price: Mapped[float] = mapped_column(
         Numeric(12, 2), default=0, nullable=False

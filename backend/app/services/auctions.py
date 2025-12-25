@@ -67,6 +67,7 @@ async def create_lot(
     base_price,
     min_increment,
     currency: str,
+    image_url: Optional[str] = None,
 ) -> Lot:
     # Auto-calculate lot number: find max lot_number for this auction and add 1
     max_lot_number = (
@@ -86,6 +87,7 @@ async def create_lot(
         min_increment=min_increment,
         currency=currency,
         current_price=base_price,
+        image_url=image_url,
     )
     db.add(lot)
     await db.commit()
@@ -138,6 +140,9 @@ async def auction_state_payload(db: AsyncSession, auction: Auction) -> dict:
                 "current_price": str(l.current_price),
                 "current_leader": str(l.current_leader) if l.current_leader else None,
                 "end_time": to_iso_string(l.end_time),
+                "image_url": l.image_url,
+                "base_price": str(l.base_price),
+                "min_increment": str(l.min_increment),
             }
             for l in auction_with_data.lots
         ],
