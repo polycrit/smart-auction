@@ -1,0 +1,44 @@
+version: "3.8"
+
+services:
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: auction-redis
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Auction Backend API
+  web:
+    build: .
+    container_name: auction-backend
+    command: uvicorn app.main:sio_app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # RQ Worker for background jobs
+  worker:
+    build: .
+    container_name: auction-worker
+    command: python -m app.worker
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  redis_data:
