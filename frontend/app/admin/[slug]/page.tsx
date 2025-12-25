@@ -16,7 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Copy, Check, Trash2, Plus } from 'lucide-react';
+import { Copy, Check, Trash2, Plus, Upload, X, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 
 const STATUS_META: Record<AuctionStatus, { label: string; dot: string }> = {
@@ -50,6 +50,10 @@ export default function AdminAuctionPage() {
     const [basePrice, setBasePrice] = useState<string>('0');
     const [minInc, setMinInc] = useState<string>('1');
     const [currency, setCurrency] = useState<string>('EUR');
+    const [imageUrl, setImageUrl] = useState<string>('');
+    const [uploading, setUploading] = useState<boolean>(false);
+    const [deleting, setDeleting] = useState<boolean>(false);
+    const [lightboxOpen, setLightboxOpen] = useState<boolean>(false);
 
     // create-participant form state
     const [selectedVendorId, setSelectedVendorId] = useState<string>('none');
@@ -73,6 +77,71 @@ export default function AdminAuctionPage() {
         }
     };
 
+    const handleImageDelete = async () => {
+        if (!imageUrl) return;
+
+        setDeleting(true);
+        try {
+            const response = await fetch(`/api/admin/upload/image?url=${encodeURIComponent(imageUrl)}`, {
+                method: 'DELETE',
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.detail || 'Delete failed');
+            }
+
+            setImageUrl('');
+            toast.success('Image deleted');
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : 'Failed to delete image');
+        } finally {
+            setDeleting(false);
+        }
+    };
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Validate file type
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            toast.error('Invalid file type. Use JPEG, PNG, GIF, or WebP');
+            return;
+        }
+
+        // Validate file size (5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error('File too large. Maximum size is 5MB');
+            return;
+        }
+
+        setUploading(true);
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch('/api/admin/upload/image', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.detail || 'Upload failed');
+            }
+
+            const data = await response.json();
+            setImageUrl(data.url);
+            toast.success('Image uploaded');
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : 'Failed to upload image');
+        } finally {
+            setUploading(false);
+        }
+    };
+
     const onCreateLot = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setBusy(true);
@@ -83,6 +152,7 @@ export default function AdminAuctionPage() {
                 base_price: basePrice,
                 min_increment: minInc,
                 currency,
+                image_url: imageUrl || null,
             };
             await adminPost(`auctions/${slug}/lots`, payload);
             // reset form - the new lot will appear via WebSocket
@@ -90,6 +160,7 @@ export default function AdminAuctionPage() {
             setBasePrice('0');
             setMinInc('1');
             setCurrency('EUR');
+            setImageUrl('');
             toast.success('Lot created');
         } catch (e) {
             setErr(e instanceof Error ? e.message : 'Failed to create lot');
@@ -234,7 +305,10 @@ export default function AdminAuctionPage() {
                         {lots.map((l: Lot) => (
                             <div key={l.id} className="grid grid-cols-11 gap-2 items-center rounded-md border p-2">
                                 <div className="col-span-1">{l.lot_number}</div>
-                                <div className="col-span-6">{l.name}</div>
+                                <div className="col-span-6 flex items-center gap-2">
+                                    {l.image_url && <ImageIcon className="h-4 w-4 text-muted-foreground shrink-0" />}
+                                    <span>{l.name}</span>
+                                </div>
                                 <div className="col-span-2 text-right">
                                     {l.current_price} {l.currency}
                                 </div>
@@ -247,33 +321,89 @@ export default function AdminAuctionPage() {
 
                 {/* Create lot */}
                 <CardFooter className="border-t mt-4 pt-4">
-                    <form onSubmit={onCreateLot} className="w-full grid grid-cols-1 gap-3 sm:grid-cols-10">
-                        <div className="sm:col-span-4">
-                            <Label htmlFor="lot_name">Name</Label>
-                            <Input
-                                id="lot_name"
-                                value={lotName}
-                                onChange={(e) => setLotName(e.target.value)}
-                                placeholder="e.g., HV Wiring Set"
-                                required
-                            />
+                    <form onSubmit={onCreateLot} className="w-full space-y-3">
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-10">
+                            <div className="sm:col-span-4">
+                                <Label htmlFor="lot_name">Name</Label>
+                                <Input
+                                    id="lot_name"
+                                    value={lotName}
+                                    onChange={(e) => setLotName(e.target.value)}
+                                    placeholder="e.g., HV Wiring Set"
+                                    required
+                                />
+                            </div>
+                            <div className="sm:col-span-2">
+                                <Label htmlFor="base_price">Base price</Label>
+                                <Input id="base_price" inputMode="decimal" value={basePrice} onChange={(e) => setBasePrice(e.target.value)} />
+                            </div>
+                            <div className="sm:col-span-2">
+                                <Label htmlFor="min_inc">Min increment</Label>
+                                <Input id="min_inc" inputMode="decimal" value={minInc} onChange={(e) => setMinInc(e.target.value)} />
+                            </div>
+                            <div className="sm:col-span-1">
+                                <Label>Cur</Label>
+                                <Select value={currency} onValueChange={setCurrency}>
+                                    <SelectTrigger>
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="EUR">EUR</SelectItem>
+                                        <SelectItem value="USD">USD</SelectItem>
+                                        <SelectItem value="GBP">GBP</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="sm:col-span-1 flex items-end">
+                                <Button type="submit" className="w-full" disabled={busy || uploading || !lotName}>
+                                    Add
+                                </Button>
+                            </div>
                         </div>
-                        <div className="sm:col-span-2">
-                            <Label htmlFor="base_price">Base price</Label>
-                            <Input id="base_price" inputMode="decimal" value={basePrice} onChange={(e) => setBasePrice(e.target.value)} />
-                        </div>
-                        <div className="sm:col-span-2">
-                            <Label htmlFor="min_inc">Min increment</Label>
-                            <Input id="min_inc" inputMode="decimal" value={minInc} onChange={(e) => setMinInc(e.target.value)} />
-                        </div>
-                        <div className="sm:col-span-1">
-                            <Label htmlFor="currency">Cur</Label>
-                            <Input id="currency" value={currency} onChange={(e) => setCurrency(e.target.value.toUpperCase())} />
-                        </div>
-                        <div className="sm:col-span-1 flex items-end">
-                            <Button type="submit" className="w-full" disabled={busy || !lotName}>
-                                Add
-                            </Button>
+                        {/* Image upload */}
+                        <div className="flex flex-col items-start gap-3">
+                            {imageUrl && (
+                                <div className="relative">
+                                    <button
+                                        type="button"
+                                        onClick={() => setLightboxOpen(true)}
+                                        className="block h-24 w-24 rounded-lg overflow-hidden border-2 hover:ring-2 hover:ring-primary transition-all cursor-pointer"
+                                    >
+                                        <img
+                                            src={imageUrl}
+                                            alt="Preview"
+                                            className="h-full w-full object-cover"
+                                        />
+                                    </button>
+                                    <Button
+                                        type="button"
+                                        variant="destructive"
+                                        size="sm"
+                                        className="absolute -top-2 -right-2 h-6 w-6 p-0 rounded-full"
+                                        onClick={handleImageDelete}
+                                        disabled={deleting}
+                                    >
+                                        <X className="h-3 w-3" />
+                                    </Button>
+                                </div>
+                            )}
+                            <Label className="flex items-center gap-2 cursor-pointer border rounded-md px-3 py-2 hover:bg-muted transition-colors">
+                                {uploading ? (
+                                    <span className="text-sm text-muted-foreground">Uploading...</span>
+                                ) : (
+                                    <>
+                                        <Upload className="h-4 w-4" />
+                                        <span className="text-sm">Upload Image</span>
+                                    </>
+                                )}
+                                <input
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/gif,image/webp"
+                                    onChange={handleImageUpload}
+                                    className="hidden"
+                                    disabled={uploading}
+                                />
+                            </Label>
                         </div>
                     </form>
                 </CardFooter>
@@ -361,6 +491,27 @@ export default function AdminAuctionPage() {
                     </form>
                 </CardFooter>
             </Card>
+
+            {/* Image Lightbox */}
+            {lightboxOpen && imageUrl && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+                    onClick={() => setLightboxOpen(false)}
+                >
+                    <button
+                        className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors"
+                        onClick={() => setLightboxOpen(false)}
+                    >
+                        <X className="h-8 w-8" />
+                    </button>
+                    <img
+                        src={imageUrl}
+                        alt="Full size preview"
+                        className="max-h-[90vh] max-w-[90vw] object-contain rounded-lg"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                </div>
+            )}
         </div>
     );
 }

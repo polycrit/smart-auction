@@ -15,6 +15,7 @@ export type Lot = {
     current_price: string;
     current_leader: UUID | null;
     end_time: string | null;
+    image_url?: string | null;
 };
 
 export type Auction = {
@@ -47,6 +48,9 @@ export type StateSnapshot = {
         current_price: string;
         current_leader: UUID | null;
         end_time: string | null;
+        image_url?: string | null;
+        base_price: string;
+        min_increment: string;
     }>;
     participants: { count: number };
 };

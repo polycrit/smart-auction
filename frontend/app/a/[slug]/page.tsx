@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import { useAuction } from '@/hooks/useAuction';
 import type { AuctionStatus, Lot } from '@/types/auction';
 
@@ -11,7 +12,6 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription }
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const STATUS_META: Record<AuctionStatus, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
@@ -86,6 +86,17 @@ function LotCard({
 
     return (
         <Card className="h-full">
+            {lot.image_url && (
+                <div className="relative w-full aspect-video overflow-hidden rounded-t-lg">
+                    <Image
+                        src={lot.image_url}
+                        alt={lot.name}
+                        fill
+                        className="object-cover"
+                        sizes="(max-width: 640px) 100vw, 50vw"
+                    />
+                </div>
+            )}
             <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-4">
                     <div>
@@ -176,6 +187,61 @@ export default function ClientAuctionPage() {
 
     const { auction, status, lots, connected, lastError, placeBid } = useAuction(slug, inviteToken);
 
+    // Show waiting screen if auction is not live
+    if (status && status !== 'live') {
+        return (
+            <div className="min-h-screen flex items-center justify-center p-6">
+                <Card className="max-w-md w-full text-center">
+                    <CardHeader>
+                        <CardTitle className="text-xl">
+                            {auction?.title ?? 'Auction'}
+                        </CardTitle>
+                        {auction?.description && (
+                            <CardDescription>{auction.description}</CardDescription>
+                        )}
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {status === 'ended' ? (
+                            <>
+                                <p className="text-lg font-medium">This auction has ended</p>
+                                <p className="text-sm text-muted-foreground">
+                                    Thank you for your participation.
+                                </p>
+                            </>
+                        ) : (
+                            <>
+                                <p className="text-lg font-medium">Waiting for auction to start</p>
+                                <p className="text-sm text-muted-foreground">
+                                    Please wait for the auctioneer to start the auction. This page will update automatically.
+                                </p>
+                                {auction?.start_time && (
+                                    <div className="mt-4 rounded-md bg-muted p-3">
+                                        <div className="text-xs text-muted-foreground">Scheduled start</div>
+                                        <div className="font-medium">{new Date(auction.start_time).toLocaleString()}</div>
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </CardContent>
+                    <CardFooter className="justify-center">
+                        <Badge variant={connected ? 'default' : 'outline'}>
+                            {connected ? 'Connected - waiting for updates' : 'Connecting...'}
+                        </Badge>
+                    </CardFooter>
+                </Card>
+            </div>
+        );
+    }
+
+    // Loading state
+    if (!auction) {
+        return (
+            <div className="min-h-screen flex items-center justify-center p-6">
+                <div className="text-muted-foreground">Loading auction...</div>
+            </div>
+        );
+    }
+
     const meta = STATUS_META[status ?? 'draft'];
 
     return (
@@ -183,16 +249,11 @@ export default function ClientAuctionPage() {
             {/* Header */}
             <div className="flex items-start justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-semibold">{auction?.title ?? 'Loading…'}</h1>
-                    <p className="text-muted-foreground">{auction?.description}</p>
+                    <h1 className="text-2xl font-semibold">{auction.title}</h1>
+                    <p className="text-muted-foreground">{auction.description}</p>
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                         <Badge variant={meta.variant}>{meta.label}</Badge>
                         <Badge variant={connected ? 'default' : 'outline'}>{connected ? 'Connected' : 'Offline'}</Badge>
-                        {auction?.slug && (
-                            <span className="text-xs text-muted-foreground">
-                                Join URL: <code className="rounded bg-muted px-2 py-0.5">/a/{auction.slug}</code>
-                            </span>
-                        )}
                     </div>
                 </div>
             </div>
@@ -206,52 +267,16 @@ export default function ClientAuctionPage() {
 
             <Separator />
 
-            {/* Content */}
-            <Tabs defaultValue="lots" className="w-full">
-                <TabsList>
-                    <TabsTrigger value="lots">Lots</TabsTrigger>
-                    <TabsTrigger value="about">About</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="lots" className="mt-4">
-                    {lots.length === 0 ? (
-                        <div className="text-sm text-muted-foreground">No lots yet.</div>
-                    ) : (
-                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                            {lots.map((lot: Lot) => (
-                                <LotCard key={lot.id} lot={lot} auctionStatus={status} connected={connected} placeBid={placeBid} />
-                            ))}
-                        </div>
-                    )}
-                </TabsContent>
-
-                <TabsContent value="about" className="mt-4">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>About this auction</CardTitle>
-                            <CardDescription>Details and schedule</CardDescription>
-                        </CardHeader>
-                        <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                            <div className="rounded-md border p-3 text-sm">
-                                <div className="text-muted-foreground">Status</div>
-                                <div className="font-medium capitalize">{status ?? 'draft'}</div>
-                            </div>
-                            <div className="rounded-md border p-3 text-sm">
-                                <div className="text-muted-foreground">Starts</div>
-                                <div className="font-medium">{auction?.start_time ? new Date(auction.start_time).toLocaleString() : '—'}</div>
-                            </div>
-                            <div className="rounded-md border p-3 text-sm">
-                                <div className="text-muted-foreground">Ends</div>
-                                <div className="font-medium">{auction?.end_time ? new Date(auction.end_time).toLocaleString() : '—'}</div>
-                            </div>
-                            <div className="rounded-md border p-3 text-sm">
-                                <div className="text-muted-foreground">Created</div>
-                                <div className="font-medium">{auction?.created_at ? new Date(auction.created_at).toLocaleString() : '—'}</div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-            </Tabs>
+            {/* Lots Grid */}
+            {lots.length === 0 ? (
+                <div className="text-sm text-muted-foreground">No lots available.</div>
+            ) : (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    {lots.map((lot: Lot) => (
+                        <LotCard key={lot.id} lot={lot} auctionStatus={status} connected={connected} placeBid={placeBid} />
+                    ))}
+                </div>
+            )}
         </div>
     );
 }

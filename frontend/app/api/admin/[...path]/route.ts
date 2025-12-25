@@ -15,18 +15,36 @@ function toNextResponse(res: AxiosResponse<unknown>): NextResponse {
 
 async function forward(method: Method, req: NextRequest, paramsPromise: AdminParams): Promise<NextResponse> {
     const { path } = await paramsPromise; // <-- await params
-    const url = `/admin/${path.join('/')}`;
+    const searchParams = req.nextUrl.searchParams.toString();
+    const url = `/admin/${path.join('/')}${searchParams ? `?${searchParams}` : ''}`;
 
     const methodHasBody = !['GET', 'DELETE'].includes(String(method).toUpperCase());
-    const data = methodHasBody ? await req.text() : undefined;
-
     const contentType = req.headers.get('content-type') ?? 'application/json';
+
+    // Handle multipart form data (file uploads) differently
+    const isMultipart = contentType.includes('multipart/form-data');
+    let data: string | Buffer | undefined;
+    let headers: Record<string, string> = { 'x-admin-token': ADMIN_TOKEN };
+
+    if (methodHasBody) {
+        if (isMultipart) {
+            // For file uploads, pass the raw body and content-type header
+            data = Buffer.from(await req.arrayBuffer());
+            headers['content-type'] = contentType;
+        } else {
+            data = await req.text();
+            headers['content-type'] = contentType;
+        }
+    }
+
     const res = await api.request<unknown>({
         url,
         method,
-        headers: { 'x-admin-token': ADMIN_TOKEN, 'content-type': contentType },
+        headers,
         data,
         validateStatus: () => true,
+        maxBodyLength: Infinity,
+        maxContentLength: Infinity,
     });
 
     return toNextResponse(res);
