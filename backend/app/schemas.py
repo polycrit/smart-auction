@@ -160,3 +160,17 @@ class DashboardSummary(BaseModel):
     revenue: RevenueAnalytics
     vendors: VendorAnalytics
     generated_at: str
+
+
+class BidLogEntry(BaseModel):
+    id: UUID
+    lot_id: UUID
+    lot_number: int
+    lot_name: str
+    vendor_name: str
+    amount: Decimal
+    currency: str
+    placed_at: datetime
+
+    class Config:
+        from_attributes = True

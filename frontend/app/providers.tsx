@@ -2,6 +2,8 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState, type PropsWithChildren } from 'react';
+import { Toaster } from 'sonner';
+import { AuthProvider } from '@/contexts/AuthContext';
 // import { ReactQueryDevtools } from "@tanstack/react-query-devtools"; // optional
 
 export default function Providers({ children }: PropsWithChildren) {
@@ -20,7 +22,10 @@ export default function Providers({ children }: PropsWithChildren) {
 
     return (
         <QueryClientProvider client={client}>
-            {children}
+            <AuthProvider>
+                {children}
+                <Toaster richColors position="top-right" />
+            </AuthProvider>
             {/* <ReactQueryDevtools initialIsOpen={false} /> */}
         </QueryClientProvider>
     );

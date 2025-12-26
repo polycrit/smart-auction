@@ -29,3 +29,8 @@ export const analyticsKeys = {
     vendors: () => [...analyticsKeys.all, 'vendors'] as const,
     participants: (auctionId: string) => [...analyticsKeys.all, 'participants', auctionId] as const,
 };
+
+export const bidLogKeys = {
+    all: ['bidLog'] as const,
+    byAuction: (slug: string) => [...bidLogKeys.all, 'auction', slug] as const,
+};

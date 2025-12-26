@@ -17,8 +17,15 @@ class Settings(BaseSettings):
     redis_url: str = "redis://redis:6379/0"
 
     # Security
-    admin_token: str
+    admin_token: str  # Legacy token (will be deprecated)
+    jwt_secret: str = "change-me-in-production"  # JWT signing secret
+    jwt_algorithm: str = "HS256"
+    jwt_expire_minutes: int = 60 * 24  # 24 hours
     cors_origins: List[str] = ["*"]
+
+    # Master admin credentials (created on first run)
+    master_admin_username: str = "admin"
+    master_admin_password: str = "admin"  # Change in production!
 
     # Application
     app_title: str = "Auction Backend"

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { apiClient as api } from '@/lib/api/client';
 import type { AxiosResponse, Method } from 'axios';
 
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN!;
+// Legacy admin token (fallback for backward compatibility)
+const LEGACY_ADMIN_TOKEN = process.env.ADMIN_TOKEN;
 
 type AdminParams = Promise<{ path: string[] }>;
 
@@ -14,7 +15,7 @@ function toNextResponse(res: AxiosResponse<unknown>): NextResponse {
 }
 
 async function forward(method: Method, req: NextRequest, paramsPromise: AdminParams): Promise<NextResponse> {
-    const { path } = await paramsPromise; // <-- await params
+    const { path } = await paramsPromise;
     const searchParams = req.nextUrl.searchParams.toString();
     const url = `/admin/${path.join('/')}${searchParams ? `?${searchParams}` : ''}`;
 
@@ -24,7 +25,16 @@ async function forward(method: Method, req: NextRequest, paramsPromise: AdminPar
     // Handle multipart form data (file uploads) differently
     const isMultipart = contentType.includes('multipart/form-data');
     let data: string | Buffer | undefined;
-    let headers: Record<string, string> = { 'x-admin-token': ADMIN_TOKEN };
+    const headers: Record<string, string> = {};
+
+    // Forward JWT token from Authorization header if present
+    const authHeader = req.headers.get('authorization');
+    if (authHeader) {
+        headers['authorization'] = authHeader;
+    } else if (LEGACY_ADMIN_TOKEN) {
+        // Fall back to legacy admin token
+        headers['x-admin-token'] = LEGACY_ADMIN_TOKEN;
+    }
 
     if (methodHasBody) {
         if (isMultipart) {

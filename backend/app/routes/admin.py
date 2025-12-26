@@ -18,7 +18,7 @@ from sqlalchemy.orm import selectinload
 from app.config import settings
 from app.db import get_session
 from app.deps import require_admin
-from app.models import Auction, Participant, Vendor
+from app.models import Auction, Participant, Vendor, Bid, Lot
 from app.schemas import (
     AuctionCreate,
     AuctionRead,
@@ -34,6 +34,7 @@ from app.schemas import (
     RevenueAnalytics,
     VendorAnalytics,
     ParticipantAnalytics,
+    BidLogEntry,
 )
 from app.services.auctions import (
     create_auction,
@@ -189,6 +190,45 @@ async def delete_image(url: str = Query(...)):
 
     logger.info(f"Image deleted: {url}")
     return {"success": True}
+
+
+@router.get("/auctions/{slug}/bids", response_model=List[BidLogEntry])
+async def get_auction_bids(
+    slug: str,
+    db: AsyncSession = Depends(get_session),
+    limit: int = Query(50, ge=1, le=200),
+):
+    """Get bid history for an auction."""
+    auction = await get_auction_by_slug(db, slug)
+    if not auction:
+        raise HTTPException(404, "Auction not found")
+
+    # Query bids with lot and participant/vendor info
+    result = await db.execute(
+        select(Bid, Lot, Participant, Vendor)
+        .join(Lot, Bid.lot_id == Lot.id)
+        .join(Participant, Bid.participant_id == Participant.id)
+        .join(Vendor, Participant.vendor_id == Vendor.id)
+        .where(Lot.auction_id == auction.id)
+        .order_by(Bid.placed_at.desc())
+        .limit(limit)
+    )
+
+    bids = []
+    for bid, lot, participant, vendor in result.all():
+        bids.append(BidLogEntry(
+            id=bid.id,
+            lot_id=lot.id,
+            lot_number=lot.lot_number,
+            lot_name=lot.name,
+            vendor_name=vendor.name,
+            amount=bid.amount,
+            currency=lot.currency,
+            placed_at=bid.placed_at,
+        ))
+
+    logger.info(f"Bid log requested: auction={slug}, count={len(bids)}")
+    return bids
 
 
 @router.get("/auctions/{slug}/participants")

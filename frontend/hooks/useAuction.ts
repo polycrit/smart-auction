@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { getAuction } from '@/lib/api';
 import { connectAuctionSocket } from '@/lib/socket';
 import type { Auction, Lot, StateSnapshot, BidAccepted, BidRejected, StatusEvent, ErrorEvent } from '@/types/auction';
@@ -59,12 +60,13 @@ export function useAuction(slug: string, inviteToken?: string) {
                             id: l.id,
                             lot_number: l.lot_number,
                             name: l.name,
-                            base_price: s.lots[l.id]?.base_price ?? '0',
-                            min_increment: s.lots[l.id]?.min_increment ?? '1',
+                            base_price: l.base_price ?? s.lots[l.id]?.base_price ?? '0',
+                            min_increment: l.min_increment ?? s.lots[l.id]?.min_increment ?? '1',
                             currency: l.currency,
                             current_price: l.current_price,
                             current_leader: l.current_leader,
                             end_time: l.end_time,
+                            image_url: l.image_url,
                         },
                     ])
                 ),
@@ -75,6 +77,9 @@ export function useAuction(slug: string, inviteToken?: string) {
             setState((s) => {
                 const lot = s.lots[payload.lot_id];
                 if (!lot) return s;
+                toast.success(`Bid accepted: ${payload.amount} ${lot.currency}`, {
+                    id: `bid-${payload.lot_id}-${payload.amount}`,
+                });
                 return {
                     ...s,
                     lots: {
@@ -90,7 +95,13 @@ export function useAuction(slug: string, inviteToken?: string) {
             });
         });
 
-        socket.on('bid_rejected', (p: BidRejected) => setState((s) => ({ ...s, lastError: p.reason || 'Bid rejected' })));
+        socket.on('bid_rejected', (p: BidRejected) => {
+            const reason = p.reason || 'Bid rejected';
+            toast.error(reason, {
+                id: `bid-rejected-${reason}`,
+            });
+            setState((s) => ({ ...s, lastError: reason }));
+        });
         socket.on('status', (p: StatusEvent) => setState((s) => ({ ...s, status: p.status })));
         socket.on('error', (p: ErrorEvent) => setState((s) => ({ ...s, lastError: p.detail || 'Error' })));
 

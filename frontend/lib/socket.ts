@@ -16,3 +16,25 @@ export function connectAuctionSocket(slug: string, inviteToken?: string) {
     });
     return socket;
 }
+
+export function connectAdminSocket(token: string) {
+    const url = process.env.NEXT_PUBLIC_API_BASE_URL!;
+    const socket: Socket = io(url + '/admin', {
+        path: '/socket.io',
+        transports: ['websocket'],
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 500,
+        auth: { token },
+        extraHeaders: {
+            'ngrok-skip-browser-warning': 'true',
+        },
+    });
+    return socket;
+}
+
+/** Get admin JWT token from localStorage */
+export function getAdminToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('admin_token');
+}

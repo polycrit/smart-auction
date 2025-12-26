@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuction } from '@/hooks/useAuction';
 import { useVendorsQuery } from '@/hooks/queries/useVendorsQuery';
 import { useParticipantsQuery } from '@/hooks/queries/useParticipantsQuery';
+import { useAdminBidLog, type BidLogEntry } from '@/hooks/useAdminBidLog';
 import { useCreateParticipantMutation } from '@/hooks/mutations/useCreateParticipantMutation';
 import { useDeleteParticipantMutation } from '@/hooks/mutations/useDeleteParticipantMutation';
 import { adminPost } from '@/lib/api';
@@ -62,6 +63,7 @@ export default function AdminAuctionPage() {
     // Use React Query for data fetching
     const { data: participants = [] } = useParticipantsQuery(slug);
     const { data: vendors = [] } = useVendorsQuery();
+    const { bids: bidLog, connected: bidLogConnected } = useAdminBidLog(slug);
     const createParticipantMutation = useCreateParticipantMutation(slug);
     const deleteParticipantMutation = useDeleteParticipantMutation(slug);
 
@@ -465,7 +467,13 @@ export default function AdminAuctionPage() {
                         <div className="flex items-end gap-3">
                             <div className="flex-1">
                                 <Label htmlFor="vendor_select">Select Vendor</Label>
-                                <Select value={selectedVendorId} onValueChange={setSelectedVendorId}>
+                                <Select value={selectedVendorId} onValueChange={(value) => {
+                                    if (value === 'create_new') {
+                                        router.push(`/admin/vendors/new?returnTo=/admin/${slug}`);
+                                    } else {
+                                        setSelectedVendorId(value);
+                                    }
+                                }}>
                                     <SelectTrigger id="vendor_select" className="min-w-50">
                                         <SelectValue placeholder="Select vendor..." />
                                     </SelectTrigger>
@@ -490,6 +498,50 @@ export default function AdminAuctionPage() {
                         </div>
                     </form>
                 </CardFooter>
+            </Card>
+
+            {/* Bid Log */}
+            <Card>
+                <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle>Bid Log</CardTitle>
+                            <CardDescription>Recent bidding activity</CardDescription>
+                        </div>
+                        <span className={`inline-flex items-center gap-1 text-xs ${bidLogConnected ? 'text-emerald-600' : 'text-slate-500'}`}>
+                            <span className={`h-2 w-2 rounded-full ${bidLogConnected ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                            {bidLogConnected ? 'Live' : 'Connecting...'}
+                        </span>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    {bidLog.length === 0 ? (
+                        <div className="text-sm text-muted-foreground px-2 py-3">No bids yet.</div>
+                    ) : (
+                        <div className="space-y-2 max-h-80 overflow-y-auto">
+                            {bidLog.map((bid: BidLogEntry) => (
+                                <div key={bid.id} className="flex items-center justify-between rounded-md border p-3 text-sm">
+                                    <div className="flex-1">
+                                        <div className="font-medium">
+                                            {bid.vendor_name} bid on Lot #{bid.lot_number}
+                                        </div>
+                                        <div className="text-xs text-muted-foreground mt-1">
+                                            {bid.lot_name}
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="font-semibold">
+                                            {Number(bid.amount).toLocaleString()} {bid.currency}
+                                        </div>
+                                        <div className="text-xs text-muted-foreground">
+                                            {new Date(bid.placed_at).toLocaleTimeString()}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </CardContent>
             </Card>
 
             {/* Image Lightbox */}

@@ -11,47 +11,60 @@ export const api = axios.create({
     },
 });
 
+/** Get auth headers with JWT token if available */
+function getAuthHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+    };
+
+    // Only access localStorage in browser
+    if (typeof window !== 'undefined') {
+        const token = localStorage.getItem('admin_token');
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+    }
+
+    return headers;
+}
+
 export async function getAuction(slug: string): Promise<Auction> {
     const { data } = await api.get(`/auctions/${slug}`);
     return data as Auction;
 }
 
-/** Lists auctions via the Next.js server proxy (keeps ADMIN_TOKEN secret). */
+/** Lists auctions via the Next.js server proxy. */
 export async function listAuctions(): Promise<Auction[]> {
     const { data } = await axios.get<Auction[]>('/api/auctions', {
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
     });
     return data;
 }
 
 export async function adminGet(path: string) {
-    // goes through Next.js server proxy to keep ADMIN_TOKEN secret
     const { data } = await axios.get(`/api/admin/${path}`, {
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
     });
     return data;
 }
 
 export async function adminPost(path: string, body: unknown) {
-    // goes through Next.js server proxy to keep ADMIN_TOKEN secret
     const { data } = await axios.post(`/api/admin/${path}`, body, {
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
     });
     return data;
 }
 
 export async function adminDelete(path: string) {
-    // goes through Next.js server proxy to keep ADMIN_TOKEN secret
     const { data } = await axios.delete(`/api/admin/${path}`, {
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
     });
     return data;
 }
 
 export async function adminPut(path: string, body: unknown) {
-    // goes through Next.js server proxy to keep ADMIN_TOKEN secret
     const { data } = await axios.put(`/api/admin/${path}`, body, {
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
     });
     return data;
 }
@@ -59,7 +72,7 @@ export async function adminPut(path: string, body: unknown) {
 // Vendor API functions
 export async function listVendors(): Promise<Vendor[]> {
     const { data } = await axios.get<Vendor[]>('/api/admin/vendors', {
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
     });
     return data;
 }

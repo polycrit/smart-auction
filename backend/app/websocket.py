@@ -11,6 +11,7 @@ from typing import Any, Dict
 import socketio
 
 from app.custom_json import CustomJSONEncoder
+from app.config import settings
 from app.db import SessionLocal
 from app.services.auctions import (
     get_auction_by_slug,
@@ -122,11 +123,13 @@ async def place_bid_evt(sid: str, data: Dict[str, Any]):
 
     async with SessionLocal() as db:
         try:
-            payload = await place_bid(
+            bid_accepted_payload, bid_log_entry = await place_bid(
                 db, lot_id=lot_id, participant_id=participant_id, amount=amount
             )
             # Broadcast to all clients in the auction room
-            await sio.emit("bid_accepted", payload, room=slug, namespace=AUCTION_NS)
+            await sio.emit("bid_accepted", bid_accepted_payload, room=slug, namespace=AUCTION_NS)
+            # Broadcast to admin room for real-time bid log
+            await sio.emit("bid_log_entry", bid_log_entry, room=f"admin:{slug}", namespace=ADMIN_NS)
         except BidTooLowError as e:
             await sio.emit(
                 "bid_rejected", {"reason": str(e)}, to=sid, namespace=AUCTION_NS
@@ -149,13 +152,55 @@ async def place_bid_evt(sid: str, data: Dict[str, Any]):
 
 @sio.event(namespace=ADMIN_NS)
 async def connect(sid: str, environ: Dict[str, Any], auth: Dict[str, Any]):
-    """Handle admin connection."""
-    # TODO: Add admin authentication
-    logger.info(f"Admin connected: sid={sid}")
-    return True
+    """Handle admin connection with JWT or legacy token validation."""
+    from app.services.auth import decode_token
+
+    token = (auth or {}).get("token")
+    if not token:
+        logger.warning(f"Admin connection rejected: No token provided (sid={sid})")
+        return False
+
+    # Try JWT token first
+    payload = decode_token(token)
+    if payload:
+        username = payload.get("username", "unknown")
+        logger.info(f"Admin connected via JWT: sid={sid}, user={username}")
+        await sio.save_session(sid, {"username": username}, namespace=ADMIN_NS)
+        return True
+
+    # Fall back to legacy admin token
+    if settings.admin_token and token == settings.admin_token:
+        logger.info(f"Admin connected via legacy token: sid={sid}")
+        await sio.save_session(sid, {"username": "legacy_admin"}, namespace=ADMIN_NS)
+        return True
+
+    logger.warning(f"Admin connection rejected: Invalid token (sid={sid})")
+    return False
 
 
 @sio.event(namespace=ADMIN_NS)
 async def disconnect(sid: str):
     """Handle admin disconnection."""
     logger.info(f"Admin disconnected: sid={sid}")
+
+
+@sio.on("join_auction", namespace=ADMIN_NS)
+async def admin_join_auction(sid: str, data: Dict[str, Any]):
+    """Handle admin joining an auction room for real-time updates."""
+    slug = data.get("slug")
+    if not slug:
+        logger.warning(f"Admin join rejected: No slug provided (sid={sid})")
+        return
+
+    await sio.enter_room(sid, f"admin:{slug}", namespace=ADMIN_NS)
+    await sio.save_session(sid, {"slug": slug}, namespace=ADMIN_NS)
+    logger.info(f"Admin joined auction room: sid={sid}, slug={slug}")
+
+
+@sio.on("leave_auction", namespace=ADMIN_NS)
+async def admin_leave_auction(sid: str, data: Dict[str, Any]):
+    """Handle admin leaving an auction room."""
+    slug = data.get("slug")
+    if slug:
+        await sio.leave_room(sid, f"admin:{slug}", namespace=ADMIN_NS)
+        logger.info(f"Admin left auction room: sid={sid}, slug={slug}")
