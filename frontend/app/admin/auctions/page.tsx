@@ -3,7 +3,7 @@
 import { useAuctionsQuery } from '@/hooks/useAuctionsQuery';
 import { AuctionCards } from '@/components/auction-cards';
 import { Button } from '@/components/ui/button';
-import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
+import { LoadingSpinner } from '@/components/shared/loading-spinner';
 import { PageHeader } from '@/components/ui/page-header';
 
 export default function Page() {

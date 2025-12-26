@@ -8,8 +8,8 @@ import { Button } from '@/components/ui/button';
 import type { Vendor } from '@/types/vendor';
 import { useVendorsQuery } from '@/hooks/queries/useVendorsQuery';
 import { useDeleteVendorMutation } from '@/hooks/mutations/useDeleteVendorMutation';
-import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
-import { ErrorMessage } from '@/components/shared/ErrorMessage';
+import { LoadingSpinner } from '@/components/shared/loading-spinner';
+import { ErrorMessage } from '@/components/shared/error-message';
 import { PageHeader } from '@/components/ui/page-header';
 
 export default function VendorsPage() {

@@ -9,8 +9,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { useVendorQuery } from '@/hooks/queries/useVendorQuery';
 import { useUpdateVendorMutation } from '@/hooks/mutations/useUpdateVendorMutation';
-import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
-import { ErrorMessage } from '@/components/shared/ErrorMessage';
+import { LoadingSpinner } from '@/components/shared/loading-spinner';
+import { ErrorMessage } from '@/components/shared/error-message';
 import { vendorSchema } from '@/lib/validations';
 
 export default function EditVendorPage() {
