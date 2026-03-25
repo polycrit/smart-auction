@@ -51,7 +51,7 @@ from app.services.vendors import (
     delete_vendor,
 )
 from app.services import analytics
-from app.jobs import activate_auction
+from app.jobs import activate_auction, end_auction
 
 logger = logging.getLogger("auction.routes.admin")
 
@@ -112,6 +112,21 @@ async def create_new_auction(
         )
     else:
         logger.info(f"Auction {auction.id} created without scheduled start")
+
+    # Schedule automatic ending if end_time exists
+    if payload.end_time:
+        end_delay = (payload.end_time - datetime.now(timezone.utc)).total_seconds()
+        if end_delay < 0:
+            end_delay = 0
+        q.enqueue_in(
+            timedelta(seconds=end_delay),
+            end_auction,
+            str(auction.id),
+            job_id=f"auction_end_{auction.id}",
+        )
+        logger.info(
+            f"Auction {auction.id} scheduled to end in {end_delay}s"
+        )
 
     return {
         "id": str(auction.id),
@@ -347,6 +362,33 @@ async def update_auction_status(
     auction = await change_auction_status(db, auction, payload.status.value)
     logger.info(f"Auction status changed: {slug} -> {auction.status}")
 
+    # When manually set to "live", schedule auto-end if end_time exists
+    if payload.status.value == "live" and auction.end_time:
+        end_delay = (auction.end_time - datetime.now(timezone.utc)).total_seconds()
+        if end_delay > 0:
+            # Cancel any existing end job first
+            try:
+                job = Job.fetch(f"auction_end_{auction.id}", connection=r)
+                job.cancel()
+            except NoSuchJobError:
+                pass
+            q.enqueue_in(
+                timedelta(seconds=end_delay),
+                end_auction,
+                str(auction.id),
+                job_id=f"auction_end_{auction.id}",
+            )
+            logger.info(f"Scheduled auto-end for auction {slug} in {end_delay}s")
+
+    # When manually ended, cancel any pending end job
+    if payload.status.value == "ended":
+        try:
+            job = Job.fetch(f"auction_end_{auction.id}", connection=r)
+            job.cancel()
+            logger.info(f"Canceled scheduled end job for auction {slug}")
+        except NoSuchJobError:
+            pass
+
     # Notify clients via WebSocket
     from app.websocket import sio, AUCTION_NS
 
@@ -384,13 +426,14 @@ async def delete_auction(
     if not auction:
         raise HTTPException(404, "Auction not found")
 
-    # Cancel any scheduled start job
-    try:
-        job = Job.fetch(f"auction_{auction.id}", connection=r)
-        job.cancel()
-        logger.info(f"Canceled scheduled job for deleted auction {auction.id}")
-    except NoSuchJobError:
-        pass
+    # Cancel any scheduled start/end jobs
+    for job_id in [f"auction_{auction.id}", f"auction_end_{auction.id}"]:
+        try:
+            job = Job.fetch(job_id, connection=r)
+            job.cancel()
+            logger.info(f"Canceled scheduled job {job_id} for deleted auction {auction.id}")
+        except NoSuchJobError:
+            pass
 
     # Delete auction (cascades to all related records)
     from app.repositories import AuctionRepository
