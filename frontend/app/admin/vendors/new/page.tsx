@@ -26,7 +26,6 @@ function NewVendorForm() {
         e.preventDefault();
         setError(undefined);
 
-        // Validate with Zod
         const result = vendorSchema.safeParse({ name, email, comment: comment || null });
 
         if (!result.success) {
@@ -36,7 +35,6 @@ function NewVendorForm() {
 
         createVendorMutation.mutate(result.data, {
             onSuccess: () => {
-                // Navigate back to returnTo or vendors list
                 if (returnTo) {
                     router.push(returnTo);
                 } else {

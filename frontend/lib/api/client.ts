@@ -1,6 +1,5 @@
 import axios, { AxiosError, AxiosInstance, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 
-// Custom error type for better error handling
 export class ApiError extends Error {
     constructor(message: string, public status?: number, public code?: string, public details?: unknown) {
         super(message);
@@ -8,7 +7,6 @@ export class ApiError extends Error {
     }
 }
 
-// Create axios instance for direct API calls
 export const apiClient: AxiosInstance = axios.create({
     baseURL: process.env.NEXT_PUBLIC_API_BASE_URL!,
     withCredentials: false,
@@ -19,7 +17,6 @@ export const apiClient: AxiosInstance = axios.create({
     },
 });
 
-// Create axios instance for admin API calls (goes through Next.js proxy)
 export const adminClient: AxiosInstance = axios.create({
     baseURL: '/api/admin',
     timeout: 20000,
@@ -29,10 +26,8 @@ export const adminClient: AxiosInstance = axios.create({
     },
 });
 
-// Response interceptor for error handling
 const errorInterceptor = (error: AxiosError) => {
     if (error.response) {
-        // Server responded with error status
         const status = error.response.status;
         const data = error.response.data as { detail?: string; code?: string };
 
@@ -54,20 +49,16 @@ const errorInterceptor = (error: AxiosError) => {
 
         throw new ApiError(message, status, data?.code, data);
     } else if (error.request) {
-        // Request made but no response
         throw new ApiError('Network error - no response from server');
     } else {
-        // Error setting up request
         throw new ApiError(error.message || 'Request failed');
     }
 };
 
-// Add error interceptor to both clients
 apiClient.interceptors.response.use((response) => response, errorInterceptor);
 
 adminClient.interceptors.response.use((response) => response, errorInterceptor);
 
-// Development logging
 if (process.env.NODE_ENV === 'development') {
     const logRequest = (config: InternalAxiosRequestConfig) => {
         console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`);

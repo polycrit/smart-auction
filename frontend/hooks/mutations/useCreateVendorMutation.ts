@@ -12,7 +12,6 @@ export function useCreateVendorMutation() {
     return useMutation({
         mutationFn: (payload: VendorCreate) => vendorsApi.createVendor(payload),
         onSuccess: () => {
-            // Invalidate vendors list to refetch
             queryClient.invalidateQueries({ queryKey: vendorsKeys.list() });
             toast.success('Vendor created successfully');
         },

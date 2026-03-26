@@ -22,7 +22,6 @@ export function useAuction(slug: string, inviteToken?: string) {
     const [state, setState] = useState<State>({ lots: {}, connected: false });
     const socketRef = useRef<ReturnType<typeof connectAuctionSocket> | null>(null);
 
-    // Initial REST load
     useEffect(() => {
         let active = true;
         getAuction(slug)
@@ -41,7 +40,6 @@ export function useAuction(slug: string, inviteToken?: string) {
         };
     }, [slug]);
 
-    // Socket.IO live updates
     useEffect(() => {
         const socket = connectAuctionSocket(slug, inviteToken);
         socketRef.current = socket;

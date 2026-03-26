@@ -6,14 +6,11 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 from app.enums import AuctionStatus, Currency
 
-
-# ---- Create payloads ----
 class AuctionCreate(BaseModel):
     title: str
     description: Optional[str] = None
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
-
 
 class LotCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
@@ -22,27 +19,21 @@ class LotCreate(BaseModel):
     currency: Currency = Currency.EUR
     image_url: Optional[str] = None
 
-
 class ParticipantCreate(BaseModel):
     vendor_id: UUID
-
 
 class VendorCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     email: str = Field(min_length=1, max_length=255)
     comment: Optional[str] = None
 
-
 class AuctionStatusUpdate(BaseModel):
     status: AuctionStatus
-
 
 class BidPlace(BaseModel):
     lot_id: UUID
     amount: Decimal
 
-
-# ---- Reads ----
 class VendorRead(BaseModel):
     id: UUID
     name: str
@@ -53,14 +44,12 @@ class VendorRead(BaseModel):
     class Config:
         from_attributes = True
 
-
 class ParticipantRead(BaseModel):
     id: UUID
     vendor: VendorRead
 
     class Config:
         from_attributes = True
-
 
 class LotRead(BaseModel):
     id: UUID
@@ -77,7 +66,6 @@ class LotRead(BaseModel):
     class Config:
         from_attributes = True
 
-
 class AuctionRead(BaseModel):
     id: UUID
     slug: str
@@ -92,8 +80,6 @@ class AuctionRead(BaseModel):
     class Config:
         from_attributes = True
 
-
-# ---- Analytics Schemas ----
 class AuctionAnalytics(BaseModel):
     total_auctions: int
     active_auctions: int
@@ -101,11 +87,9 @@ class AuctionAnalytics(BaseModel):
     scheduled_auctions: int
     by_status: dict
 
-
 class BidActivityData(BaseModel):
     date: Optional[str]
     count: int
-
 
 class BidAnalytics(BaseModel):
     total_bids: int
@@ -113,7 +97,6 @@ class BidAnalytics(BaseModel):
     avg_bids_per_lot: float
     unique_bidders: int
     daily_activity: List[BidActivityData]
-
 
 class RevenueAnalytics(BaseModel):
     realized_revenue: float
@@ -126,14 +109,12 @@ class RevenueAnalytics(BaseModel):
     avg_winning_premium: float
     by_currency: dict
 
-
 class TopVendor(BaseModel):
     id: str
     name: str
     email: str
     auction_count: int
     bid_count: int
-
 
 class VendorAnalytics(BaseModel):
     total_vendors: int
@@ -144,7 +125,6 @@ class VendorAnalytics(BaseModel):
     leading_vendors: int
     top_vendors: List[TopVendor]
 
-
 class ParticipantAnalytics(BaseModel):
     total_participants: int
     active_participants: int
@@ -153,14 +133,12 @@ class ParticipantAnalytics(BaseModel):
     current_leaders: int
     engagement_rate: float
 
-
 class DashboardSummary(BaseModel):
     auctions: AuctionAnalytics
     bids: BidAnalytics
     revenue: RevenueAnalytics
     vendors: VendorAnalytics
     generated_at: str
-
 
 class BidLogEntry(BaseModel):
     id: UUID

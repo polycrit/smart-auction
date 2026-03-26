@@ -1,6 +1,3 @@
-"""
-Background jobs for auction automation.
-"""
 
 import asyncio
 from datetime import datetime, timezone
@@ -12,12 +9,7 @@ import logging
 
 logger = logging.getLogger("auction.jobs")
 
-
 async def activate_auction(auction_id: str):
-    """
-    Activate an auction (called by RQ worker).
-    This is now an async function that will be awaited by the AsyncWorker.
-    """
     try:
         auction_uuid = UUID(auction_id)
     except ValueError:
@@ -38,7 +30,6 @@ async def activate_auction(auction_id: str):
                 f"Auction {auction_id} auto-started at {datetime.now(timezone.utc)}"
             )
 
-            # Emit WebSocket event
             try:
                 from app.main import sio
 
@@ -59,12 +50,7 @@ async def activate_auction(auction_id: str):
                 f"Auction {auction_id} is in status '{auction.status}', not starting"
             )
 
-
 async def end_auction(auction_id: str):
-    """
-    End an auction automatically when its end_time is reached (called by RQ worker).
-    Only ends the auction if it is currently live.
-    """
     try:
         auction_uuid = UUID(auction_id)
     except ValueError:
@@ -84,7 +70,6 @@ async def end_auction(auction_id: str):
                 f"Auction {auction_id} auto-ended at {datetime.now(timezone.utc)}"
             )
 
-            # Emit WebSocket event to notify all clients
             try:
                 from app.websocket import sio, AUCTION_NS
 

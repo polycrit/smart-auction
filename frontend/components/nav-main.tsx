@@ -17,7 +17,6 @@ export function NavMain({ items }: { items: Item[] }) {
     const pathname = usePathname();
 
     const isActive = (href: string) => {
-        // exact match or nested path under the item
         return pathname === href || pathname.startsWith(href + '/');
     };
 

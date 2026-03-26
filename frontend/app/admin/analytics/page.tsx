@@ -30,7 +30,6 @@ export default function AnalyticsPage() {
 
     if (!analytics) return null;
 
-    // Prepare chart data
     const statusData = [
         { name: 'Draft', value: analytics.auctions.by_status.draft },
         { name: 'Live', value: analytics.auctions.by_status.live },
@@ -48,7 +47,6 @@ export default function AnalyticsPage() {
         amount,
     }));
 
-    // Get primary currency for formatting (use first currency or default to EUR)
     const primaryCurrency = Object.keys(analytics.revenue?.by_currency ?? {})[0] || 'EUR';
 
     const formatCurrency = (value: number, currency: string = primaryCurrency) => {
@@ -64,9 +62,7 @@ export default function AnalyticsPage() {
         <>
             <PageHeader text="Analytics" subtext="Comprehensive auction platform metrics and insights" />
 
-            {/* KPI Cards - Row 1: Revenue & Auctions */}
             <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs @xl/main:grid-cols-2 @5xl/main:grid-cols-4 mb-6">
-                {/* Realized Revenue */}
                 <Card className="@container/card">
                     <CardHeader>
                         <CardDescription>Realized Revenue</CardDescription>
@@ -90,7 +86,6 @@ export default function AnalyticsPage() {
                     </CardFooter>
                 </Card>
 
-                {/* Conversion Rate */}
                 <Card className="@container/card">
                     <CardHeader>
                         <CardDescription>Conversion Rate</CardDescription>
@@ -115,7 +110,6 @@ export default function AnalyticsPage() {
                     </CardFooter>
                 </Card>
 
-                {/* Total Auctions */}
                 <Card className="@container/card">
                     <CardHeader>
                         <CardDescription>Total Auctions</CardDescription>
@@ -140,7 +134,6 @@ export default function AnalyticsPage() {
                     </CardFooter>
                 </Card>
 
-                {/* Total Bids */}
                 <Card className="@container/card">
                     <CardHeader>
                         <CardDescription>Total Bids</CardDescription>
@@ -165,9 +158,7 @@ export default function AnalyticsPage() {
                 </Card>
             </div>
 
-            {/* KPI Cards - Row 2: Vendors */}
             <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs @xl/main:grid-cols-3 mb-6">
-                {/* Total Vendors */}
                 <Card className="@container/card">
                     <CardHeader>
                         <CardDescription>Registered Vendors</CardDescription>
@@ -191,7 +182,6 @@ export default function AnalyticsPage() {
                     </CardFooter>
                 </Card>
 
-                {/* Active Participations */}
                 <Card className="@container/card">
                     <CardHeader>
                         <CardDescription>Current Leaders</CardDescription>
@@ -215,7 +205,6 @@ export default function AnalyticsPage() {
                     </CardFooter>
                 </Card>
 
-                {/* Current Lot Value */}
                 <Card className="@container/card">
                     <CardHeader>
                         <CardDescription>Current Lot Value</CardDescription>
@@ -240,9 +229,7 @@ export default function AnalyticsPage() {
                 </Card>
             </div>
 
-            {/* Charts Section */}
             <div className="grid grid-cols-1 gap-6 @xl/main:grid-cols-2 mb-6">
-                {/* Auction Status Distribution */}
                 <Card>
                     <CardHeader>
                         <CardTitle>Auction Status Distribution</CardTitle>
@@ -277,7 +264,6 @@ export default function AnalyticsPage() {
                     </CardContent>
                 </Card>
 
-                {/* Bid Activity (Last 7 Days) */}
                 <Card>
                     <CardHeader>
                         <CardTitle>Bid Activity</CardTitle>
@@ -309,9 +295,7 @@ export default function AnalyticsPage() {
                 </Card>
             </div>
 
-            {/* Revenue by Currency & Top Vendors */}
             <div className="grid grid-cols-1 gap-6 @xl/main:grid-cols-2">
-                {/* Revenue by Currency */}
                 <Card>
                     <CardHeader>
                         <CardTitle>Revenue by Currency</CardTitle>
@@ -336,7 +320,6 @@ export default function AnalyticsPage() {
                     </CardContent>
                 </Card>
 
-                {/* Top Vendors */}
                 <Card>
                     <CardHeader>
                         <CardTitle>Top Vendors by Bids</CardTitle>

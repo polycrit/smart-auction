@@ -23,7 +23,6 @@ const STATUS_META: Record<AuctionStatus, { label: string; variant: 'default' | '
 
 function formatMoney(amount: string, currency: string): string {
     const n = Number(amount);
-    // fall back if currency is non-standard
     try {
         return new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(n);
     } catch {
@@ -80,8 +79,6 @@ function LotCard({
         e.preventDefault();
         if (!canBid) return;
         placeBid(lot.id, amount);
-        // keep the amount so user can re-bid quickly; or uncomment to clear:
-        // setAmount('');
     };
 
     return (
@@ -187,7 +184,6 @@ export default function ClientAuctionPage() {
 
     const { auction, status, lots, connected, lastError, placeBid } = useAuction(slug, inviteToken);
 
-    // Show waiting screen if auction is not live
     if (status && status !== 'live') {
         return (
             <div className="min-h-screen flex items-center justify-center p-6">
@@ -233,7 +229,6 @@ export default function ClientAuctionPage() {
         );
     }
 
-    // Loading state
     if (!auction) {
         return (
             <div className="min-h-screen flex items-center justify-center p-6">
@@ -246,7 +241,6 @@ export default function ClientAuctionPage() {
 
     return (
         <div className="max-w-6xl mx-auto p-6 space-y-6">
-            {/* Header */}
             <div className="flex items-start justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-semibold">{auction.title}</h1>
@@ -267,7 +261,6 @@ export default function ClientAuctionPage() {
 
             <Separator />
 
-            {/* Lots Grid */}
             {lots.length === 0 ? (
                 <div className="text-sm text-muted-foreground">No lots available.</div>
             ) : (

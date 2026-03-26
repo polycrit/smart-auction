@@ -15,13 +15,10 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import UUID
 
-
 class Base(DeclarativeBase):
     pass
 
-
 class AdminUser(Base):
-    """Admin user for authentication."""
     __tablename__ = "admin_users"
 
     id: Mapped[UUID_T] = mapped_column(
@@ -35,7 +32,6 @@ class AdminUser(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     last_login: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
-
 
 class Vendor(Base):
     __tablename__ = "vendors"
@@ -52,7 +48,6 @@ class Vendor(Base):
 
     participants: Mapped[List["Participant"]] = relationship(back_populates="vendor")
 
-
 class Auction(Base):
     __tablename__ = "auctions"
 
@@ -64,7 +59,7 @@ class Auction(Base):
     description: Mapped[Optional[str]] = mapped_column(Text)
     status: Mapped[str] = mapped_column(
         Text, default="draft", nullable=False
-    )  # draft|live|paused|ended
+    )
     start_time: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     end_time: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     created_by: Mapped[Optional[UUID_T]] = mapped_column(UUID(as_uuid=True))
@@ -78,7 +73,6 @@ class Auction(Base):
     participants: Mapped[List["Participant"]] = relationship(
         back_populates="auction", cascade="all, delete-orphan"
     )
-
 
 class Participant(Base):
     __tablename__ = "participants"
@@ -105,7 +99,6 @@ class Participant(Base):
     auction: Mapped["Auction"] = relationship(back_populates="participants")
     vendor: Mapped["Vendor"] = relationship(back_populates="participants")
 
-
 class Lot(Base):
     __tablename__ = "lots"
 
@@ -130,7 +123,6 @@ class Lot(Base):
     current_price: Mapped[float] = mapped_column(
         Numeric(12, 2), default=0, nullable=False
     )
-    # FIX: Add ondelete="SET NULL" to allow participant deletion
     current_leader: Mapped[Optional[UUID_T]] = mapped_column(
         UUID(as_uuid=True), ForeignKey("participants.id", ondelete="SET NULL")
     )
@@ -141,7 +133,6 @@ class Lot(Base):
     bids: Mapped[List["Bid"]] = relationship(
         back_populates="lot", cascade="all, delete-orphan"
     )
-
 
 class Bid(Base):
     __tablename__ = "bids"

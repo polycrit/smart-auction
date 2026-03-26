@@ -8,11 +8,9 @@ from app.models import Auction, Participant, Lot
 from sqlalchemy.orm import selectinload
 from app.utils import generate_slug, generate_token, to_iso_string
 
-
 async def create_auction(
     db: AsyncSession, title: str, description: Optional[str], start_time, end_time
 ) -> Auction:
-    # ensure unique slug with retry logic
     for attempt in range(5):
         slug = generate_slug()
         exists = await db.scalar(select(Auction.id).where(Auction.slug == slug))
@@ -35,14 +33,13 @@ async def create_auction(
     await db.refresh(auction)
     return auction
 
-
 async def get_auction_by_slug(db: AsyncSession, slug: str) -> Optional[Auction]:
     return await db.scalar(select(Auction).where(Auction.slug == slug))
 
-
-async def get_participant_by_token(db: AsyncSession, token: str) -> Optional[Participant]:
+async def get_participant_by_token(
+    db: AsyncSession, token: str
+) -> Optional[Participant]:
     return await db.scalar(select(Participant).where(Participant.invite_token == token))
-
 
 async def create_participant(
     db: AsyncSession, auction_id: UUID, vendor_id: UUID
@@ -59,7 +56,6 @@ async def create_participant(
     await db.refresh(p)
     return p
 
-
 async def create_lot(
     db: AsyncSession,
     auction_id: UUID,
@@ -69,7 +65,6 @@ async def create_lot(
     currency: str,
     image_url: Optional[str] = None,
 ) -> Lot:
-    # Auto-calculate lot number: find max lot_number for this auction and add 1
     max_lot_number = (
         await db.execute(
             select(func.max(Lot.lot_number)).where(Lot.auction_id == auction_id)
@@ -94,7 +89,6 @@ async def create_lot(
     await db.refresh(lot)
     return lot
 
-
 async def change_auction_status(
     db: AsyncSession, auction: Auction, status: str
 ) -> Auction:
@@ -102,7 +96,6 @@ async def change_auction_status(
     await db.commit()
     await db.refresh(auction)
     return auction
-
 
 async def auction_state_payload(db: AsyncSession, auction: Auction) -> dict:
     result = await db.execute(

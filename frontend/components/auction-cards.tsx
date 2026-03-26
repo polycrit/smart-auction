@@ -36,7 +36,6 @@ function formatWhen(start?: string | null, end?: string | null) {
     return 'Unscheduled';
 }
 
-/* -------- Single Auction Card -------- */
 function AuctionCard({ auction }: { auction: Auction }) {
     const href = `/admin/${auction.slug}`;
     const parts = auction.lots?.length ?? 0;
@@ -99,7 +98,6 @@ function AuctionCard({ auction }: { auction: Auction }) {
     );
 }
 
-/* -------- Create New Card -------- */
 function CreateNewCard() {
     return (
         <Link href="/admin/auctions/new" className="group block h-full no-underline text-current">
@@ -118,7 +116,6 @@ function CreateNewCard() {
     );
 }
 
-/* -------- Grid wrapper -------- */
 export function AuctionCards({ auctions }: { auctions: Auction[] }) {
     return (
         <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs @xl/main:grid-cols-2 @5xl/main:grid-cols-4">

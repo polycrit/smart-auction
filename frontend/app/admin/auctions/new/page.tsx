@@ -28,7 +28,7 @@ export default function NewAuctionPage() {
 
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
-    const [startAt, setStartAt] = useState(''); // HTML datetime-local value
+    const [startAt, setStartAt] = useState('');
     const [endAt, setEndAt] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string>();
@@ -56,8 +56,6 @@ export default function NewAuctionPage() {
             const res = (await adminPost('auctions', payload)) as CreateResponse;
             setPreview(res);
 
-            // Navigate to the admin page for this auction
-            // Adjust if your route differs (e.g., `/admin/${res.slug}/setup`)
             router.push(`/admin/${res.slug}`);
         } catch (err) {
             const message = err instanceof Error ? err.message : 'Failed to create auction';

@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-// Vendor validation
 export const vendorSchema = z.object({
     name: z.string().min(1, 'Name is required').max(255, 'Name is too long'),
     email: z.string().email('Invalid email address'),
@@ -9,14 +8,12 @@ export const vendorSchema = z.object({
 
 export type VendorFormData = z.infer<typeof vendorSchema>;
 
-// Participant validation
 export const participantSchema = z.object({
     vendor_id: z.string().uuid('Invalid vendor ID'),
 });
 
 export type ParticipantFormData = z.infer<typeof participantSchema>;
 
-// Lot validation
 export const lotSchema = z.object({
     name: z.string().min(1, 'Lot name is required').max(255, 'Name is too long'),
     base_price: z.coerce.number().min(0, 'Base price must be non-negative'),
@@ -26,7 +23,6 @@ export const lotSchema = z.object({
 
 export type LotFormData = z.infer<typeof lotSchema>;
 
-// Auction validation
 export const auctionSchema = z.object({
     title: z.string().min(1, 'Title is required').max(255, 'Title is too long'),
     description: z.string().optional().nullable(),

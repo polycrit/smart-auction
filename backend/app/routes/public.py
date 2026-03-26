@@ -1,7 +1,3 @@
-"""
-Public API routes for auctions.
-These endpoints are accessible without authentication.
-"""
 import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,13 +12,8 @@ logger = logging.getLogger("auction.routes.public")
 
 router = APIRouter(prefix="/auctions", tags=["public"])
 
-
 @router.get("/{slug}", response_model=AuctionRead)
 async def get_auction(slug: str, db: AsyncSession = Depends(get_session)):
-    """
-    Get public auction details by slug.
-    Returns auction information including lots but not sensitive data.
-    """
     result = await db.execute(
         select(Auction).options(selectinload(Auction.lots)).where(Auction.slug == slug)
     )

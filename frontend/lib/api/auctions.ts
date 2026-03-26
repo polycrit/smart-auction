@@ -2,13 +2,11 @@ import { apiClient, adminClient } from './client';
 import type { Auction, AuctionStatus } from '@/types/auction';
 
 export const auctionsApi = {
-    // Public endpoints
     getAuction: async (slug: string): Promise<Auction> => {
         const { data } = await apiClient.get<Auction>(`/auctions/${slug}`);
         return data;
     },
 
-    // Admin endpoints
     listAuctions: async (): Promise<Auction[]> => {
         const { data } = await adminClient.get<Auction[]>('/../auctions');
         return data;
@@ -36,7 +34,6 @@ export const auctionsApi = {
         await adminClient.delete(`/auctions/${slug}`);
     },
 
-    // Lots
     createLot: async (
         slug: string,
         payload: {

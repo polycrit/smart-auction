@@ -52,7 +52,6 @@ export default function VendorsPage() {
 
     return (
         <div className="space-y-6">
-            {/* Header */}
             <div className="flex items-center justify-between">
                 <PageHeader text="Vendors" subtext="Manage you vendor contacts" />
                 <Link href="/admin/vendors/new">
@@ -63,7 +62,6 @@ export default function VendorsPage() {
                 </Link>
             </div>
 
-            {/* Vendors Grid */}
             {!vendors || vendors.length === 0 ? (
                 <Card>
                     <CardContent className="flex flex-col items-center justify-center py-12">

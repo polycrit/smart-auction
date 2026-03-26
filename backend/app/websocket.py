@@ -1,6 +1,3 @@
-"""
-Socket.IO setup and event handlers for real-time auction communication.
-"""
 import json
 import logging
 from decimal import Decimal
@@ -23,7 +20,6 @@ from app.exceptions import BidTooLowError, LotNotLiveError
 
 logger = logging.getLogger("auction.websocket")
 
-# Socket.IO server configuration
 sio = socketio.AsyncServer(
     async_mode="asgi",
     cors_allowed_origins="*",
@@ -34,15 +30,8 @@ sio = socketio.AsyncServer(
 AUCTION_NS = "/auction"
 ADMIN_NS = "/admin"
 
-
-# ============================================================================
-# AUCTION NAMESPACE - For bidders and viewers
-# ============================================================================
-
-
 @sio.event(namespace=AUCTION_NS)
 async def connect(sid: str, environ: Dict[str, Any], auth: Dict[str, Any]):
-    """Handle client connection to auction namespace."""
     qs = parse_qs(environ.get("QUERY_STRING", ""))
     slug = (auth or {}).get("slug") or (qs.get("slug") or [None])[0]
     token = (auth or {}).get("t") or (qs.get("t") or [None])[0]
@@ -85,22 +74,17 @@ async def connect(sid: str, environ: Dict[str, Any], auth: Dict[str, Any]):
             f"participant={participant.id if participant else 'viewer'}"
         )
 
-        # Send current auction state
         payload = await auction_state_payload(db, auction)
         await sio.emit("state", payload, to=sid, namespace=AUCTION_NS)
 
-
 @sio.event(namespace=AUCTION_NS)
 async def disconnect(sid: str):
-    """Handle client disconnection from auction namespace."""
     sess = await sio.get_session(sid, namespace=AUCTION_NS)
     if sess:
         logger.info(f"Client disconnected: sid={sid}, slug={sess.get('slug')}")
 
-
 @sio.on("place_bid", namespace=AUCTION_NS)
 async def place_bid_evt(sid: str, data: Dict[str, Any]):
-    """Handle bid placement event."""
     sess = await sio.get_session(sid, namespace=AUCTION_NS)
     if not sess or not sess.get("participant_id"):
         logger.warning(f"Unauthorized bid attempt: sid={sid}")
@@ -126,9 +110,7 @@ async def place_bid_evt(sid: str, data: Dict[str, Any]):
             bid_accepted_payload, bid_log_entry = await place_bid(
                 db, lot_id=lot_id, participant_id=participant_id, amount=amount
             )
-            # Broadcast to all clients in the auction room
             await sio.emit("bid_accepted", bid_accepted_payload, room=slug, namespace=AUCTION_NS)
-            # Broadcast to admin room for real-time bid log
             await sio.emit("bid_log_entry", bid_log_entry, room=f"admin:{slug}", namespace=ADMIN_NS)
         except BidTooLowError as e:
             await sio.emit(
@@ -144,15 +126,8 @@ async def place_bid_evt(sid: str, data: Dict[str, Any]):
                 "error", {"detail": "Internal error"}, to=sid, namespace=AUCTION_NS
             )
 
-
-# ============================================================================
-# ADMIN NAMESPACE - For auction administrators
-# ============================================================================
-
-
 @sio.event(namespace=ADMIN_NS)
 async def connect(sid: str, environ: Dict[str, Any], auth: Dict[str, Any]):
-    """Handle admin connection with JWT or legacy token validation."""
     from app.services.auth import decode_token
 
     token = (auth or {}).get("token")
@@ -160,7 +135,6 @@ async def connect(sid: str, environ: Dict[str, Any], auth: Dict[str, Any]):
         logger.warning(f"Admin connection rejected: No token provided (sid={sid})")
         return False
 
-    # Try JWT token first
     payload = decode_token(token)
     if payload:
         username = payload.get("username", "unknown")
@@ -168,7 +142,6 @@ async def connect(sid: str, environ: Dict[str, Any], auth: Dict[str, Any]):
         await sio.save_session(sid, {"username": username}, namespace=ADMIN_NS)
         return True
 
-    # Fall back to legacy admin token
     if settings.admin_token and token == settings.admin_token:
         logger.info(f"Admin connected via legacy token: sid={sid}")
         await sio.save_session(sid, {"username": "legacy_admin"}, namespace=ADMIN_NS)
@@ -177,16 +150,12 @@ async def connect(sid: str, environ: Dict[str, Any], auth: Dict[str, Any]):
     logger.warning(f"Admin connection rejected: Invalid token (sid={sid})")
     return False
 
-
 @sio.event(namespace=ADMIN_NS)
 async def disconnect(sid: str):
-    """Handle admin disconnection."""
     logger.info(f"Admin disconnected: sid={sid}")
-
 
 @sio.on("join_auction", namespace=ADMIN_NS)
 async def admin_join_auction(sid: str, data: Dict[str, Any]):
-    """Handle admin joining an auction room for real-time updates."""
     slug = data.get("slug")
     if not slug:
         logger.warning(f"Admin join rejected: No slug provided (sid={sid})")
@@ -196,10 +165,8 @@ async def admin_join_auction(sid: str, data: Dict[str, Any]):
     await sio.save_session(sid, {"slug": slug}, namespace=ADMIN_NS)
     logger.info(f"Admin joined auction room: sid={sid}, slug={slug}")
 
-
 @sio.on("leave_auction", namespace=ADMIN_NS)
 async def admin_leave_auction(sid: str, data: Dict[str, Any]):
-    """Handle admin leaving an auction room."""
     slug = data.get("slug")
     if slug:
         await sio.leave_room(sid, f"admin:{slug}", namespace=ADMIN_NS)

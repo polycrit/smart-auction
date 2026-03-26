@@ -19,17 +19,14 @@ export function AdminLayoutWrapper({ children }: AdminLayoutWrapperProps) {
     const isLoginPage = pathname === '/admin/login';
 
     useEffect(() => {
-        // Redirect to login if not authenticated and not on login page
         if (!isLoading && !user && !isLoginPage) {
             router.push('/admin/login');
         }
-        // Redirect to admin if authenticated and on login page
         if (!isLoading && user && isLoginPage) {
             router.push('/admin');
         }
     }, [user, isLoading, isLoginPage, router]);
 
-    // Show loading state while checking auth
     if (isLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -38,17 +35,14 @@ export function AdminLayoutWrapper({ children }: AdminLayoutWrapperProps) {
         );
     }
 
-    // Render login page without sidebar
     if (isLoginPage) {
         return <>{children}</>;
     }
 
-    // Don't render if not authenticated
     if (!user) {
         return null;
     }
 
-    // Render admin layout with sidebar for authenticated users
     return (
         <SidebarProvider
             style={

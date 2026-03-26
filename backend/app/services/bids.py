@@ -12,18 +12,9 @@ from app.exceptions import BidTooLowError, LotNotLiveError
 
 logger = logging.getLogger("auction.bids")
 
-
 async def place_bid(
     db: AsyncSession, lot_id: UUID, participant_id: UUID, amount: Decimal
 ) -> Tuple[dict, dict]:
-    """
-    Place a bid on a lot.
-
-    Returns:
-        Tuple of (bid_accepted_payload, bid_log_entry) for broadcasting to
-        auction namespace and admin namespace respectively.
-    """
-    # 1) Lock the lot row and load auction
     lot = (
         await db.execute(
             select(Lot)
@@ -32,7 +23,6 @@ async def place_bid(
         )
     ).scalar_one()
 
-    # Load auction to check its status
     from app.models import Auction
     auction = (
         await db.execute(select(Auction).where(Auction.id == lot.auction_id))
@@ -53,7 +43,6 @@ async def place_bid(
         )
         raise BidTooLowError(f"min_required={min_required}")
 
-    # 2) Insert bid
     bid_id = uuid4()
     placed_at = datetime.now(timezone.utc)
     bid = Bid(
@@ -65,11 +54,9 @@ async def place_bid(
     )
     db.add(bid)
 
-    # 3) Update lot cache
     lot.current_price = amount
     lot.current_leader = participant_id
 
-    # 4) Anti-sniping (optional)
     if lot.end_time and (lot.extension_sec or 0) > 0:
         now = datetime.now(timezone.utc)
         remaining = (lot.end_time - now).total_seconds()
@@ -78,7 +65,6 @@ async def place_bid(
 
     await db.commit()
 
-    # Load participant with vendor for admin bid log
     participant = (
         await db.execute(
             select(Participant)
@@ -91,7 +77,6 @@ async def place_bid(
         f"Bid accepted: Lot {lot_id}, Amount {amount}, Participant {participant_id}"
     )
 
-    # Payload for auction namespace (bidders)
     bid_accepted_payload = {
         "type": "bid_accepted",
         "lot_id": str(lot_id),
@@ -100,7 +85,6 @@ async def place_bid(
         "ends_at": lot.end_time.isoformat() if lot.end_time else None,
     }
 
-    # Payload for admin namespace (bid log)
     bid_log_entry = {
         "type": "bid_log_entry",
         "id": str(bid_id),

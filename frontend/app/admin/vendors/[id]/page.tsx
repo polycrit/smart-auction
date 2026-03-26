@@ -26,7 +26,6 @@ export default function EditVendorPage() {
     const [comment, setComment] = useState('');
     const [error, setError] = useState<string>();
 
-    // Set form values when vendor data loads
     useEffect(() => {
         if (vendor) {
             setName(vendor.name);
@@ -39,7 +38,6 @@ export default function EditVendorPage() {
         e.preventDefault();
         setError(undefined);
 
-        // Validate with Zod
         const result = vendorSchema.safeParse({ name, email, comment: comment || null });
 
         if (!result.success) {

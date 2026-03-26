@@ -1,10 +1,7 @@
-// Domain primitives
 export type UUID = string;
 
-// Status unions
 export type AuctionStatus = 'draft' | 'live' | 'paused' | 'ended';
 
-// Core entities
 export type Lot = {
     id: UUID;
     lot_number: number;
@@ -30,7 +27,6 @@ export type Auction = {
     lots: Lot[];
 };
 
-// Socket.IO event payloads (optional but handy across app)
 export type StateSnapshot = {
     type?: 'state';
     auction: {

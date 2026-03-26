@@ -11,13 +11,11 @@ export const api = axios.create({
     },
 });
 
-/** Get auth headers with JWT token if available */
 function getAuthHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',
     };
 
-    // Only access localStorage in browser
     if (typeof window !== 'undefined') {
         const token = localStorage.getItem('admin_token');
         if (token) {
@@ -33,7 +31,6 @@ export async function getAuction(slug: string): Promise<Auction> {
     return data as Auction;
 }
 
-/** Lists auctions via the Next.js server proxy. */
 export async function listAuctions(): Promise<Auction[]> {
     const { data } = await axios.get<Auction[]>('/api/auctions', {
         headers: getAuthHeaders(),
@@ -69,7 +66,6 @@ export async function adminPut(path: string, body: unknown) {
     return data;
 }
 
-// Vendor API functions
 export async function listVendors(): Promise<Vendor[]> {
     const { data } = await axios.get<Vendor[]>('/api/admin/vendors', {
         headers: getAuthHeaders(),

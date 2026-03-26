@@ -1,17 +1,11 @@
-"""
-Analytics service for generating auction platform statistics and insights.
-"""
 from datetime import datetime, timedelta
 from typing import Dict, Any
 from sqlalchemy import func, select, and_, cast, Numeric
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Auction, Lot, Bid, Participant, Vendor
 
-
 async def get_auction_analytics(db: AsyncSession) -> Dict[str, Any]:
-    """Get comprehensive auction statistics."""
 
-    # Total auctions by status
     status_query = select(
         Auction.status,
         func.count(Auction.id).label('count')
@@ -20,10 +14,8 @@ async def get_auction_analytics(db: AsyncSession) -> Dict[str, Any]:
     status_result = await db.execute(status_query)
     status_counts = {row.status: row.count for row in status_result}
 
-    # Total auctions
     total_auctions = sum(status_counts.values())
 
-    # Recent auctions (last 30 days)
     thirty_days_ago = datetime.utcnow() - timedelta(days=30)
     recent_query = select(func.count(Auction.id)).where(
         Auction.created_at >= thirty_days_ago
@@ -31,10 +23,8 @@ async def get_auction_analytics(db: AsyncSession) -> Dict[str, Any]:
     recent_result = await db.execute(recent_query)
     recent_auctions = recent_result.scalar() or 0
 
-    # Active auctions (live or paused)
     active_auctions = status_counts.get('live', 0) + status_counts.get('paused', 0)
 
-    # Auctions with scheduled start times
     scheduled_query = select(func.count(Auction.id)).where(
         Auction.start_time.isnot(None)
     )
@@ -54,16 +44,12 @@ async def get_auction_analytics(db: AsyncSession) -> Dict[str, Any]:
         }
     }
 
-
 async def get_bid_analytics(db: AsyncSession) -> Dict[str, Any]:
-    """Get comprehensive bidding statistics."""
 
-    # Total bids
     total_bids_query = select(func.count(Bid.id))
     total_bids_result = await db.execute(total_bids_query)
     total_bids = total_bids_result.scalar() or 0
 
-    # Recent bids (last 24 hours)
     twenty_four_hours_ago = datetime.utcnow() - timedelta(hours=24)
     recent_bids_query = select(func.count(Bid.id)).where(
         Bid.placed_at >= twenty_four_hours_ago
@@ -71,7 +57,6 @@ async def get_bid_analytics(db: AsyncSession) -> Dict[str, Any]:
     recent_bids_result = await db.execute(recent_bids_query)
     recent_bids = recent_bids_result.scalar() or 0
 
-    # Average bids per lot (requires subquery)
     bids_per_lot_subq = (
         select(func.count(Bid.id).label('bid_count'))
         .group_by(Bid.lot_id)
@@ -81,12 +66,10 @@ async def get_bid_analytics(db: AsyncSession) -> Dict[str, Any]:
     avg_bids_result = await db.execute(avg_bids_query)
     avg_bids_per_lot = float(avg_bids_result.scalar() or 0)
 
-    # Total unique bidders
     unique_bidders_query = select(func.count(func.distinct(Bid.participant_id)))
     unique_bidders_result = await db.execute(unique_bidders_query)
     unique_bidders = unique_bidders_result.scalar() or 0
 
-    # Bid activity over time (last 7 days)
     seven_days_ago = datetime.utcnow() - timedelta(days=7)
     date_col = func.date_trunc('day', Bid.placed_at)
     daily_bids_query = select(
@@ -115,18 +98,14 @@ async def get_bid_analytics(db: AsyncSession) -> Dict[str, Any]:
         'daily_activity': daily_bids
     }
 
-
 async def get_revenue_analytics(db: AsyncSession) -> Dict[str, Any]:
-    """Get financial analytics and revenue statistics."""
 
-    # Current lot value (sum of current prices across all lots - potential value)
     current_value_query = select(
         func.sum(cast(Lot.current_price, Numeric)).label('total')
     )
     current_value_result = await db.execute(current_value_query)
     current_lot_value = float(current_value_result.scalar() or 0)
 
-    # Realized revenue (only from ended auctions - actual revenue)
     realized_revenue_query = select(
         func.sum(cast(Lot.current_price, Numeric))
     ).select_from(Lot).join(
@@ -137,7 +116,6 @@ async def get_revenue_analytics(db: AsyncSession) -> Dict[str, Any]:
     realized_revenue_result = await db.execute(realized_revenue_query)
     realized_revenue = float(realized_revenue_result.scalar() or 0)
 
-    # Revenue by currency (from ended auctions only)
     revenue_by_currency_query = select(
         Lot.currency,
         func.sum(cast(Lot.current_price, Numeric)).label('revenue')
@@ -153,26 +131,22 @@ async def get_revenue_analytics(db: AsyncSession) -> Dict[str, Any]:
         for row in revenue_by_currency_result
     }
 
-    # Total lots
     total_lots_query = select(func.count(Lot.id))
     total_lots_result = await db.execute(total_lots_query)
     total_lots = total_lots_result.scalar() or 0
 
-    # Total lots with bids
     lots_with_bids_query = select(
         func.count(func.distinct(Lot.id))
     ).select_from(Lot).join(Bid, Lot.id == Bid.lot_id)
     lots_with_bids_result = await db.execute(lots_with_bids_query)
     lots_with_bids = lots_with_bids_result.scalar() or 0
 
-    # Ended lots total
     ended_lots_query = select(func.count(Lot.id)).select_from(Lot).join(
         Auction, Lot.auction_id == Auction.id
     ).where(Auction.status == 'ended')
     ended_lots_result = await db.execute(ended_lots_query)
     ended_lots = ended_lots_result.scalar() or 0
 
-    # Ended lots with bids (for conversion rate)
     ended_lots_with_bids_query = select(
         func.count(func.distinct(Lot.id))
     ).select_from(Lot).join(
@@ -183,11 +157,8 @@ async def get_revenue_analytics(db: AsyncSession) -> Dict[str, Any]:
     ended_lots_with_bids_result = await db.execute(ended_lots_with_bids_query)
     ended_lots_with_bids = ended_lots_with_bids_result.scalar() or 0
 
-    # Conversion rate (% of ended lots that received bids)
     conversion_rate = (ended_lots_with_bids / ended_lots * 100) if ended_lots > 0 else 0
 
-    # Average winning premium (how much above base price lots sold for, in %)
-    # Only for ended lots with bids
     premium_query = select(
         func.avg(
             (cast(Lot.current_price, Numeric) - cast(Lot.base_price, Numeric))
@@ -204,7 +175,6 @@ async def get_revenue_analytics(db: AsyncSession) -> Dict[str, Any]:
     premium_result = await db.execute(premium_query)
     avg_winning_premium = float(premium_result.scalar() or 0)
 
-    # Average lot price (from ended auctions)
     avg_price_query = select(
         func.avg(cast(Lot.current_price, Numeric))
     ).select_from(Lot).join(
@@ -225,23 +195,18 @@ async def get_revenue_analytics(db: AsyncSession) -> Dict[str, Any]:
         'by_currency': revenue_by_currency
     }
 
-
 async def get_vendor_analytics(db: AsyncSession) -> Dict[str, Any]:
-    """Get vendor participation and performance statistics."""
 
-    # Total registered vendors
     total_vendors_query = select(func.count(Vendor.id))
     total_vendors_result = await db.execute(total_vendors_query)
     total_vendors = total_vendors_result.scalar() or 0
 
-    # Vendors who have participated in at least one auction
     participating_vendors_query = select(
         func.count(func.distinct(Participant.vendor_id))
     )
     participating_vendors_result = await db.execute(participating_vendors_query)
     participating_vendors = participating_vendors_result.scalar() or 0
 
-    # Vendors who have placed at least one bid
     bidding_vendors_query = select(
         func.count(func.distinct(Participant.vendor_id))
     ).select_from(Participant).join(
@@ -250,19 +215,16 @@ async def get_vendor_analytics(db: AsyncSession) -> Dict[str, Any]:
     bidding_vendors_result = await db.execute(bidding_vendors_query)
     bidding_vendors = bidding_vendors_result.scalar() or 0
 
-    # Total participations (a vendor can participate in multiple auctions)
     total_participations_query = select(func.count(Participant.id))
     total_participations_result = await db.execute(total_participations_query)
     total_participations = total_participations_result.scalar() or 0
 
-    # Blocked participations
     blocked_participations_query = select(
         func.count(Participant.id)
     ).where(Participant.blocked == True)
     blocked_participations_result = await db.execute(blocked_participations_query)
     blocked_participations = blocked_participations_result.scalar() or 0
 
-    # Vendors currently leading lots
     leading_vendors_query = select(
         func.count(func.distinct(Participant.vendor_id))
     ).select_from(Participant).join(
@@ -271,7 +233,6 @@ async def get_vendor_analytics(db: AsyncSession) -> Dict[str, Any]:
     leading_vendors_result = await db.execute(leading_vendors_query)
     leading_vendors = leading_vendors_result.scalar() or 0
 
-    # Top participating vendors (by number of auctions + bid count)
     top_vendors_query = select(
         Vendor.id,
         Vendor.name,
@@ -310,21 +271,17 @@ async def get_vendor_analytics(db: AsyncSession) -> Dict[str, Any]:
         'top_vendors': top_vendors
     }
 
-
 async def get_participant_analytics(
     auction_id: str,
     db: AsyncSession
 ) -> Dict[str, Any]:
-    """Get analytics for participants in a specific auction."""
 
-    # Total participants
     total_query = select(func.count(Participant.id)).where(
         Participant.auction_id == auction_id
     )
     total_result = await db.execute(total_query)
     total = total_result.scalar() or 0
 
-    # Active vs blocked
     active_query = select(func.count(Participant.id)).where(
         and_(
             Participant.auction_id == auction_id,
@@ -334,7 +291,6 @@ async def get_participant_analytics(
     active_result = await db.execute(active_query)
     active = active_result.scalar() or 0
 
-    # Participants with bids
     with_bids_query = select(
         func.count(func.distinct(Bid.participant_id))
     ).select_from(Bid).join(
@@ -345,7 +301,6 @@ async def get_participant_analytics(
     with_bids_result = await db.execute(with_bids_query)
     with_bids = with_bids_result.scalar() or 0
 
-    # Current leaders
     leaders_query = select(
         func.count(func.distinct(Lot.current_leader))
     ).where(
@@ -366,9 +321,7 @@ async def get_participant_analytics(
         'engagement_rate': round((with_bids / total * 100) if total > 0 else 0, 2)
     }
 
-
 async def get_dashboard_summary(db: AsyncSession) -> Dict[str, Any]:
-    """Get comprehensive dashboard summary with all key metrics."""
 
     auction_stats = await get_auction_analytics(db)
     bid_stats = await get_bid_analytics(db)

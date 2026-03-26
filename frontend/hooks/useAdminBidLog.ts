@@ -23,14 +23,12 @@ export function useAdminBidLog(slug: string) {
     const socketRef = useRef<Socket | null>(null);
     const [connected, setConnected] = useState(false);
 
-    // Initial REST fetch
     const query = useQuery({
         queryKey: bidLogKeys.byAuction(slug),
         queryFn: () => adminGet(`auctions/${slug}/bids`) as Promise<BidLogEntry[]>,
         enabled: !!slug,
     });
 
-    // WebSocket for real-time updates
     useEffect(() => {
         if (!slug) return;
 
@@ -45,7 +43,6 @@ export function useAdminBidLog(slug: string) {
 
         socket.on('connect', () => {
             setConnected(true);
-            // Join the auction room
             socket.emit('join_auction', { slug });
         });
 
@@ -58,9 +55,7 @@ export function useAdminBidLog(slug: string) {
             setConnected(false);
         });
 
-        // Listen for new bid log entries
         socket.on('bid_log_entry', (entry: BidLogEntry) => {
-            // Prepend new entry to the cached data
             queryClient.setQueryData<BidLogEntry[]>(
                 bidLogKeys.byAuction(slug),
                 (old) => (old ? [entry, ...old] : [entry])

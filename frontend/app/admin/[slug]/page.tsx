@@ -46,7 +46,6 @@ export default function AdminAuctionPage() {
     const [busy, setBusy] = useState<boolean>(false);
     const [err, setErr] = useState<string | undefined>(undefined);
 
-    // create-lot form state
     const [lotName, setLotName] = useState<string>('');
     const [basePrice, setBasePrice] = useState<string>('0');
     const [minInc, setMinInc] = useState<string>('1');
@@ -56,11 +55,9 @@ export default function AdminAuctionPage() {
     const [deleting, setDeleting] = useState<boolean>(false);
     const [lightboxOpen, setLightboxOpen] = useState<boolean>(false);
 
-    // create-participant form state
     const [selectedVendorId, setSelectedVendorId] = useState<string>('none');
     const [copiedId, setCopiedId] = useState<string | null>(null);
 
-    // Use React Query for data fetching
     const { data: participants = [] } = useParticipantsQuery(slug);
     const { data: vendors = [] } = useVendorsQuery();
     const { bids: bidLog, connected: bidLogConnected } = useAdminBidLog(slug);
@@ -106,14 +103,12 @@ export default function AdminAuctionPage() {
         const file = e.target.files?.[0];
         if (!file) return;
 
-        // Validate file type
         const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
         if (!allowedTypes.includes(file.type)) {
             toast.error('Invalid file type. Use JPEG, PNG, GIF, or WebP');
             return;
         }
 
-        // Validate file size (5MB)
         if (file.size > 5 * 1024 * 1024) {
             toast.error('File too large. Maximum size is 5MB');
             return;
@@ -157,7 +152,6 @@ export default function AdminAuctionPage() {
                 image_url: imageUrl || null,
             };
             await adminPost(`auctions/${slug}/lots`, payload);
-            // reset form - the new lot will appear via WebSocket
             setLotName('');
             setBasePrice('0');
             setMinInc('1');
@@ -174,13 +168,11 @@ export default function AdminAuctionPage() {
     const onCreateParticipant = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
-        // Check if "create new" was selected
         if (selectedVendorId === 'create_new') {
             router.push(`/admin/vendors/new?returnTo=/admin/${slug}`);
             return;
         }
 
-        // Check if no vendor selected
         if (selectedVendorId === 'none') {
             setErr('Please select a vendor');
             return;
@@ -226,7 +218,6 @@ export default function AdminAuctionPage() {
 
     return (
         <div className="max-w-6xl mx-auto p-6 space-y-6">
-            {/* Header */}
             <div className="flex items-start justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-semibold">{auction?.title ?? 'Loading…'}</h1>
@@ -259,7 +250,6 @@ export default function AdminAuctionPage() {
 
             <Separator />
 
-            {/* Lots */}
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                     <div>
@@ -268,35 +258,7 @@ export default function AdminAuctionPage() {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    {/* If you have shadcn Table, use it; otherwise the responsive grid below works out of the box */}
-                    {/* TABLE VERSION (uncomment if you have the Table component)
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>#</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Current price</TableHead>
-                <TableHead>Leader</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {lots.map((l) => (
-                <TableRow key={l.id}>
-                  <TableCell>{l.lot_number}</TableCell>
-                  <TableCell>{l.name}</TableCell>
-                  <TableCell className="capitalize">{l.status}</TableCell>
-                  <TableCell className="text-right">
-                    {l.current_price} {l.currency}
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">{l.current_leader ?? "-"}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          */}
 
-                    {/* GRID VERSION (no extra deps) */}
                     <div className="grid grid-cols-11 gap-2 text-sm font-medium text-muted-foreground px-2">
                         <div className="col-span-1">#</div>
                         <div className="col-span-6">Name</div>
@@ -321,7 +283,6 @@ export default function AdminAuctionPage() {
                     </div>
                 </CardContent>
 
-                {/* Create lot */}
                 <CardFooter className="border-t mt-4 pt-4">
                     <form onSubmit={onCreateLot} className="w-full space-y-3">
                         <div className="grid grid-cols-1 gap-3 sm:grid-cols-10">
@@ -362,7 +323,6 @@ export default function AdminAuctionPage() {
                                 </Button>
                             </div>
                         </div>
-                        {/* Image upload */}
                         <div className="flex flex-col items-start gap-3">
                             {imageUrl && (
                                 <div className="relative">
@@ -411,7 +371,6 @@ export default function AdminAuctionPage() {
                 </CardFooter>
             </Card>
 
-            {/* Participants */}
             <Card>
                 <CardHeader>
                     <CardTitle>Participants</CardTitle>
@@ -461,7 +420,6 @@ export default function AdminAuctionPage() {
                     )}
                 </CardContent>
 
-                {/* Create participant */}
                 <CardFooter className="border-t mt-4 pt-4">
                     <form onSubmit={onCreateParticipant} className="w-full space-y-3">
                         <div className="flex items-end gap-3">
@@ -500,7 +458,6 @@ export default function AdminAuctionPage() {
                 </CardFooter>
             </Card>
 
-            {/* Bid Log */}
             <Card>
                 <CardHeader>
                     <div className="flex items-center justify-between">
@@ -544,7 +501,6 @@ export default function AdminAuctionPage() {
                 </CardContent>
             </Card>
 
-            {/* Image Lightbox */}
             {lightboxOpen && imageUrl && (
                 <div
                     className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"

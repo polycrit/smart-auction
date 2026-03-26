@@ -1,26 +1,15 @@
-"""Initial migration: create all tables
-
-Revision ID: b89c2e15c283
-Revises:
-Create Date: 2025-12-23 23:07:29.177816
-
-"""
 from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
-# revision identifiers, used by Alembic.
 revision: str = 'b89c2e15c283'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
-
 def upgrade() -> None:
-    """Upgrade schema."""
-    # Create vendors table
     op.create_table(
         'vendors',
         sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
@@ -32,7 +21,6 @@ def upgrade() -> None:
         sa.UniqueConstraint('email')
     )
 
-    # Create auctions table
     op.create_table(
         'auctions',
         sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
@@ -48,7 +36,6 @@ def upgrade() -> None:
         sa.UniqueConstraint('slug')
     )
 
-    # Create participants table
     op.create_table(
         'participants',
         sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
@@ -63,7 +50,6 @@ def upgrade() -> None:
         sa.UniqueConstraint('invite_token')
     )
 
-    # Create lots table
     op.create_table(
         'lots',
         sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
@@ -82,7 +68,6 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id')
     )
 
-    # Create bids table
     op.create_table(
         'bids',
         sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False),
@@ -95,9 +80,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint('id')
     )
 
-
 def downgrade() -> None:
-    """Downgrade schema."""
     op.drop_table('bids')
     op.drop_table('lots')
     op.drop_table('participants')

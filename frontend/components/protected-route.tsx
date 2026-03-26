@@ -18,7 +18,6 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
         }
     }, [user, isLoading, router]);
 
-    // Show loading state while checking auth
     if (isLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -27,7 +26,6 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
         );
     }
 
-    // Don't render children if not authenticated
     if (!user) {
         return null;
     }

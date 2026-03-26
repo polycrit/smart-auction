@@ -30,7 +30,6 @@ export default function Page() {
 
     return (
         <div className="space-y-6">
-            {/* This container now has the same padding as the dashboard sections */}
             <div className="flex justify-between">
                 <PageHeader text="Auctions" subtext="Manage you auctions" />
                 <Button size="sm" variant="ghost" onClick={() => refetch()} disabled={isFetching}>

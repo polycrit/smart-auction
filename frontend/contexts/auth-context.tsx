@@ -26,7 +26,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [isLoading, setIsLoading] = useState(true);
     const router = useRouter();
 
-    // Load token from localStorage on mount
     useEffect(() => {
         const storedToken = localStorage.getItem(TOKEN_KEY);
         const storedUser = localStorage.getItem(USER_KEY);
@@ -36,7 +35,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setToken(storedToken);
                 setUser(JSON.parse(storedUser));
             } catch {
-                // Invalid stored data, clear it
                 localStorage.removeItem(TOKEN_KEY);
                 localStorage.removeItem(USER_KEY);
             }

@@ -9,7 +9,6 @@ export function useAuctionsQuery() {
     return useQuery<Auction[]>({
         queryKey: auctionsKeys.list(),
         queryFn: () => listAuctions(),
-        // keep old data while refetching for smoother UI
         placeholderData: (prev) => prev,
     });
 }

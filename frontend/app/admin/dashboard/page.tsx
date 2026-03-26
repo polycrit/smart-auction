@@ -35,7 +35,6 @@ export default function Page() {
 
     if (!analytics) return null;
 
-    // Get primary currency for formatting
     const primaryCurrency = Object.keys(analytics.revenue?.by_currency ?? {})[0] || 'EUR';
 
     const formatCurrency = (value: number) => {
@@ -56,9 +55,7 @@ export default function Page() {
         <>
             <PageHeader text="Dashboard" subtext="Quick overview of your auction platform" />
 
-            {/* KPI Cards */}
             <div className="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs @xl/main:grid-cols-2 @5xl/main:grid-cols-4 mb-6">
-                {/* Realized Revenue */}
                 <Card className="@container/card">
                     <CardHeader>
                         <CardDescription>Realized Revenue</CardDescription>
@@ -82,7 +79,6 @@ export default function Page() {
                     </CardFooter>
                 </Card>
 
-                {/* Active Auctions */}
                 <Card className="@container/card">
                     <CardHeader>
                         <CardDescription>Active Auctions</CardDescription>
@@ -106,7 +102,6 @@ export default function Page() {
                     </CardFooter>
                 </Card>
 
-                {/* Today's Activity */}
                 <Card className="@container/card">
                     <CardHeader>
                         <CardDescription>Bids (24h)</CardDescription>
@@ -130,7 +125,6 @@ export default function Page() {
                     </CardFooter>
                 </Card>
 
-                {/* Vendors */}
                 <Card className="@container/card">
                     <CardHeader>
                         <CardDescription>Active Vendors</CardDescription>
@@ -156,7 +150,6 @@ export default function Page() {
                 </Card>
             </div>
 
-            {/* Bid Activity Chart */}
             <Card className="mb-6">
                 <CardHeader>
                     <CardTitle>Bid Activity (7 Days)</CardTitle>
@@ -194,7 +187,6 @@ export default function Page() {
                 </CardContent>
             </Card>
 
-            {/* Quick Links */}
             <div className="flex gap-4">
                 <Link href="/admin/analytics" className="text-sm text-primary hover:underline">
                     View detailed analytics →
